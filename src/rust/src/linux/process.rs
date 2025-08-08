@@ -68,7 +68,7 @@ fn parse_segment(line: String) -> Option<LibraryInfo> {
             _ = iterator.next()?;                   // inode
             let path = iterator.next()?.trim();
             if path.starts_with('/') && path.contains(".so") {
-
+                
                 let addr_range: Vec<_> = addr_range.split('-').collect();
                 let start = usize::from_str_radix(addr_range.get(0)?, 16).ok()?;
                 let end = usize::from_str_radix(addr_range.get(1)?, 16).ok()?;

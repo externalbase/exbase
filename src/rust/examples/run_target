@@ -1,0 +1,9 @@
+#!/bin/bash
+
+gcc target.c -o ABC123
+
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
+./ABC123

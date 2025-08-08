@@ -1,30 +1,25 @@
-use std::fs::File;
+use std::{fs::OpenOptions, os::unix::fs::FileExt};
 
-use crate::Memory;
+use crate::{MemoryAccessor, StreamMem, SystemMem};
 
-// process_vm_readv
-pub struct SystemMem {
+impl MemoryAccessor for StreamMem {
 
-}
-
-pub struct StreamMem {
-    mem: File
-}
-
-impl Memory for SystemMem {
-    fn read<T: Copy>(&self, address: *mut std::ffi::c_void) -> T {
-        todo!()
+    fn read_buffer(&self, buf: &mut [u8], addr: usize) {
+        self.mem.read_exact_at(buf, addr as u64).unwrap_or_default();
     }
-
-    fn read_buffer(&self, address: *mut std::ffi::c_void, len: usize) -> Vec<u8> {
-        todo!()
+    
+    fn write_buffer(&self, buf: &[u8], addr: usize) {
+        _ = self.mem.write_at(buf, addr as u64);
     }
 }
 
 impl StreamMem {
     pub fn new(pid: u32) -> Result<Self, std::io::Error> {
         Ok(Self {
-            mem: File::open(format!("/proc/{pid}/mem"))?,
+            mem: OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(format!("/proc/{pid}/mem"))?
         })
     }
 }

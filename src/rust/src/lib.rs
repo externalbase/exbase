@@ -1,5 +1,3 @@
-use std::ffi::c_void;
-
 #[cfg_attr(target_os = "linux", path = "linux/process.rs")]
 #[cfg_attr(target_os = "windows", path = "linux/process.rs")]
 mod process;
@@ -9,14 +7,50 @@ pub mod memory;
 #[cfg(test)]
 mod tests;
 
-pub trait Memory {
-    fn read<T: Copy>(&self, address: *mut c_void) -> T;
-    fn read_buffer(&self, address: *mut c_void, len: usize) -> Vec<u8>;
-}
+use std::fs::File;
 
-pub struct Process<M: Memory> {
+pub trait MemoryAccessor {
+    fn read_buffer(&self, buf: &mut [u8], addr: usize);
+    fn write_buffer(&self, buf: &[u8], addr: usize);
+
+    fn read<T: Copy>(&self, addr: usize) -> T {
+        let mut buf = vec![0u8; std::mem::size_of::<T>()];
+        self.read_buffer(&mut buf, addr);
+        unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const T) }
+    }
+
+    /// max_len: 256
+    fn read_string(&self, addr: usize, max_len: usize) -> String {
+        let mut buf = vec![0u8; max_len];
+        self.read_buffer(&mut buf, addr);
+        
+        let slice = match buf.iter().position(|&b| b == 0) {
+            Some(n) => &buf[..n],
+            None => &buf[..],
+        };
+        String::from_utf8_lossy(slice).into_owned()
+    }
+    
+    fn write<T: Copy>(&self, addr: usize, value: T) {
+        let mut buf = vec![0u8; std::mem::size_of::<T>()];
+        let ptr = &value as *const T;
+        unsafe {
+            std::ptr::copy_nonoverlapping(ptr, buf.as_mut_ptr() as *mut T, 1);
+        }
+        self.write_buffer(&mut buf, addr);
+    }
+    
+}
+pub struct Process<M: MemoryAccessor> {
     pub(crate) info: ProcessInfo,
     pub memory: M,
+}
+
+//     SysCall,
+pub struct SystemMem;
+//     VFile
+pub struct StreamMem {
+    pub(crate) mem: File
 }
 
 #[derive(Debug, Clone)]
@@ -35,10 +69,11 @@ pub struct LibraryInfo {
     perms: String,
 }
 
+
 impl ProcessInfo {
-    pub fn attach<M: Memory>(self, memory: M) -> Process<M> {
+    pub fn attach<M: MemoryAccessor>(&self, memory: M) -> Process<M> {
         Process {
-            info: self,
+            info: self.clone(),
             memory,
         }
     }
