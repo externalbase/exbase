@@ -8,6 +8,7 @@ impl MemoryAccessor for StreamMem {
         self.mem.read_exact_at(buf, addr as u64).unwrap_or_default();
     }
     
+    #[cfg(not(feature = "read_only"))]
     fn write_buffer(&self, buf: &[u8], addr: usize) {
         _ = self.mem.write_at(buf, addr as u64);
     }

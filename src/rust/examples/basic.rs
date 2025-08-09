@@ -1,3 +1,5 @@
+use std::process;
+
 use exbase::{MemoryAccessor, Process, ProcessInfo};
 
 #[repr(C)]
@@ -12,7 +14,7 @@ pub struct MyStruct {
 }
 
 pub fn main() {
-    let processes = ProcessInfo::processes_by_name("ABC123").expect("Failed to get processes");
+    let processes = exbase::get_process_info_list("ABC123").expect("Failed to get processes");
 
     if processes.len() > 1 {
         println!("Warning: More than one process found");
