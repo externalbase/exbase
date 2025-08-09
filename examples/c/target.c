@@ -1,3 +1,14 @@
+/**
+ * This is the “target” program, which is 
+ * used to test memory reading and writing. 
+ * The program declares a structure and, 
+ * upon pressing [Enter], continuously prints 
+ * the structure’s fields in an infinite loop.
+ * 
+ * For convenience, in the examples the program
+ * will be compiled under the name “ABC123”.
+ */
+
 #include<stdio.h>
 #include<stdint.h>
 
@@ -10,7 +21,6 @@ typedef struct {
     int8_t          num3;
 } MyStruct;
 
-// Программа "цель" для проверки read/write методов
 int main(void) {
     MyStruct my_struct = {
         .num = 10,
@@ -34,7 +44,7 @@ int main(void) {
             my_struct.num3
         );
 
-        printf("ptr: %p\n", my_struct_ptr);
+        printf("struct ptr: %p\n", my_struct_ptr);
         printf("num offset: 0x%lx\n", num_offset - (void*)my_struct_ptr);
         printf("num2 offset: 0x%lx\n", num2_offset - (void*)my_struct_ptr);
         printf("num3 offset: 0x%lx\n", num3_offset - (void*)my_struct_ptr);

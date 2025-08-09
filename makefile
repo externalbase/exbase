@@ -1,12 +1,12 @@
 LIB_NAME := exbase
 
-CRATE_DIR := ../src/rust
-WORKSPACEDIR := ../src/c
+CRATE_DIR := src
+EXAMPLE_DIR := examples/c
 LDIR := $(CRATE_DIR)/target/release
-OUTDIR := $(WORKSPACEDIR)/bin
+OUTDIR := $(EXAMPLE_DIR)/bin
 
 CC := gcc
-CFLAGS := -I$(WORKSPACEDIR)/include
+CFLAGS := -I$(CRATE_DIR)
 
 .PHONY: all rust c clean
 
@@ -18,7 +18,7 @@ rust:
 
 c: rust
 	@mkdir -p $(OUTDIR)
-	$(CC) $(WORKSPACEDIR)/example/main.c -o $(OUTDIR)/example $(CFLAGS) -L$(LDIR) -l$(LIB_NAME)
+	$(CC) $(EXAMPLE_DIR)/main.c -o $(OUTDIR)/example $(CFLAGS) -L$(LDIR) -l$(LIB_NAME)
 	@cp $(LDIR)/lib$(LIB_NAME).so $(OUTDIR)/
 
 clean:

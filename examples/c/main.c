@@ -14,6 +14,6 @@ int main(int argc, char** argv) {
         printf("%p - Перечисляем (%d) pid: %d\n", *&processes[i], i, process_info_pid(*&processes[i]));
     }
 
-    free_process_info_list(processes);
+    free_process_info_list(processes, out_len);
     return 0;
 }
