@@ -10,7 +10,7 @@ default = ["ffi"]
 ffi = []
 read_only = []
 
-# [[example]]
-# name = "basic"
-# path = "examples/basic/main.rs"
-# required-features = []
+[[example]]
+name = "main"
+path = "../examples/rust/main.rs"
+required-features = []

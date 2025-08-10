@@ -73,7 +73,6 @@ pub struct LibraryInfo {
     perms: String,
 }
 
-
 impl ProcessInfo {
     pub fn attach<M: MemoryAccessor>(&self, memory: M) -> Process<M> {
         Process {
