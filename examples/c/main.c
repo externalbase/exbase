@@ -1,55 +1,79 @@
 #include<stdio.h>
+#include<stddef.h>
+#include<string.h>
 #include"exbase.h" // ${workspaceFolder}/../../src/exbase.h
 
-void display_process_info(ProcessInfo proc);
-void display_libraries(LibraryInfo lib);
+typedef struct {
+    int             num;
+    uintptr_t       long_text;
+    uintptr_t       short_text;
+    unsigned short  num2;
+    char            padding[16];
+    int8_t          num3;
+} MyStruct;
+
+void print_process_info(ProcessInfo proc);
+void print_libraries(LibraryInfo lib);
+void read_write_field(Process proc);
+void read_write_struct(Process proc);
 
 int main(int argc, char** argv) {
     int out_len = 0;
-    ProcessInfo* processes = get_process_info_list("ABC123", &out_len);
-    if (!processes) {
-        puts("Не найдено ни одного процесса\n");
+    ProcessInfo* proc_info_list = get_process_info_list("ABC123", &out_len);
+
+    if (!proc_info_list) {
+        puts("Не найдено ни одного процесса");
         return 1;
     }
-
     if (out_len > 1) {
         printf("Найдено %d процесса(ов)\n", out_len);
         for (int i = 0; i < out_len; ++i) {
-            printf("%d - PID: %d\n", i, process_info_pid(processes[i]));
+            printf("%d. - PID: %d\n", i, process_info_pid(proc_info_list[i]));
         }
-        free_process_info_list(processes, out_len);
+        free_process_info_list(proc_info_list, out_len);
         return 1;
     }
 
-    ProcessInfo proc = *processes;
+    ProcessInfo proc_info = *proc_info_list;
 
-    display_process_info(proc);
-    display_libraries(proc);
+    print_process_info(proc_info);
+    print_libraries(proc_info);
 
-    free_process_info_list(processes, out_len);
+    Process proc = process_info_attach(proc_info);
+    if (!proc) {
+        // Если StreamMem: Не удалось открыть /proc/{pid}/mem
+        // Если SystemMem: Недостаточно прав
+        printf("failed\n");
+        free_process_info_list(proc_info_list, out_len);
+        return 1;
+    }
+
+    read_write_field(proc);
+    read_write_struct(proc);
+
+    free_process_info_list(proc_info_list, out_len);
     return 0;
 }
 
-void display_process_info(ProcessInfo proc) {
-    unsigned int pid = process_info_pid(proc);
-    const char* name = process_info_name(proc);
-    const char* cmd = process_info_cmd(proc);
-    const char* exe = process_info_exe(proc);
+void print_process_info(ProcessInfo proc_info) {
+    unsigned int pid = process_info_pid(proc_info);
+    const char* name = process_info_name(proc_info);
+    const char* cmd = process_info_cmd(proc_info);
+    const char* exe = process_info_exe(proc_info);
 
     printf("PID: %d\n", pid);
     printf("Name: %s\n", name);
     printf("Cmd: %s\n", cmd);
     printf("Executable: %s\n\n", exe);
 
-    // Отчищаем память
     free_cstring(name);
     free_cstring(cmd);
     free_cstring(exe);
 }
 
-void display_libraries(ProcessInfo proc) {
+void print_libraries(ProcessInfo proc_info) {
     int out_len = 0;
-    LibraryInfo* libraries = process_info_get_libraries(proc, &out_len);
+    LibraryInfo* libraries = process_info_get_libraries(proc_info, &out_len);
     if (!libraries) {
         puts("не удалось получить библиотеки\n");
         return;
@@ -60,15 +84,49 @@ void display_libraries(ProcessInfo proc) {
         const char* bin = library_info_bin(lib);
         const char* perms = library_info_perms(lib);
         uintptr_t address = library_info_address(lib);
-        uintptr_t size = library_info_size(lib);
+        size_t size = library_info_size(lib);
 
         printf("Binary path: %s\n", bin);
-        printf("Permissions: %s\n", perms);
-        printf("Address: %p\n", address);
-        printf("Size: %d (bytes)\n\n", size);
-    }
+        printf("Address: %p\n", (void*)address);
+        printf("Size: %ld (bytes)\n\n", size);
 
-    // free bin, perms
+        free_cstring(bin);
+        free_cstring(perms);
+    }
 
     free_library_info_list(libraries, out_len);
 }
+
+void read_write_field(Process proc) {
+    uintptr_t addr = 0x7ffd5219c5d0;
+    int num2;
+    process_read(proc, num2, addr + 0x18);
+    num2 *= -1;
+    process_write(proc, num2, addr + 0x18);
+}
+
+void read_write_struct(Process proc) {
+    uintptr_t addr = 0x7ffd5219c5d0;
+    MyStruct my_struct;
+    process_read(proc, my_struct, addr);
+    my_struct.num += 3;
+    my_struct.num3 *= 2;
+    process_write(proc, my_struct, addr);
+
+    const char* short_text = process_read_string(proc, 256, my_struct.short_text);
+    printf("short_text: %s, text len: %ld\n", short_text, strlen(short_text));
+    free_cstring(short_text);
+
+    // vfile
+    // char new_text[] = "hi";
+    // process_write_buffer_vfile(proc, (const unsigned char*)new_text, sizeof(new_text), my_struct.long_text);
+}
+
+// void e2() {
+//     ProcessInfo proc_info = process_info_from_pid(1234);
+//     if (proc_info == NULL) {
+//         puts("Not found or permission denied");
+//         return;
+//     }
+//     free_process_info(proc_info);
+// }

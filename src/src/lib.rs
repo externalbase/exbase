@@ -50,9 +50,10 @@ pub struct Process<M: MemoryAccessor> {
     pub memory: M,
 }
 
-//     SysCall,
-pub struct SystemMem;
-//     VFile
+pub struct SysMem {
+    pid: i32
+}
+#[cfg(target_os = "linux")]
 pub struct StreamMem {
     pub(crate) mem: File
 }
@@ -85,19 +86,19 @@ impl ProcessInfo {
         process::is_alive(self.pid as i32)
     }
 
-    pub fn get_pid(&self) -> u32 {
+    pub fn pid(&self) -> u32 {
         self.pid
     }
 
-    pub fn get_name(&self) -> String {
+    pub fn name(&self) -> String {
         self.name.clone()
     }
 
-    pub fn get_executable(&self) -> String {
+    pub fn exe(&self) -> String {
         self.exe.clone()
     }
 
-    pub fn get_cmd(&self) -> String {
+    pub fn cmd(&self) -> String {
         self.cmd.clone()
     }
 }
@@ -121,6 +122,12 @@ impl LibraryInfo {
 
     pub fn can_write(&self) -> bool {
         &self.perms[1..2] == "w"
+    }
+}
+
+impl<M: MemoryAccessor> Process<M> {
+    pub fn get_info(&self) -> ProcessInfo {
+        self.info.clone()
     }
 }
 

@@ -6,7 +6,7 @@ LDIR := $(CRATE_DIR)/target/release
 OUTDIR := $(EXAMPLE_DIR)/bin
 
 CC := gcc
-CFLAGS := -I$(CRATE_DIR)
+CFLAGS := -I$(CRATE_DIR) -Wall
 
 .PHONY: all rust c clean
 

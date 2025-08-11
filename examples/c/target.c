@@ -35,18 +35,21 @@ int main(void) {
     ptrdiff_t num_offset = (char*)&my_struct_ptr->num - (char*)my_struct_ptr;
     ptrdiff_t num2_offset = (char*)&my_struct_ptr->num2 - (char*)my_struct_ptr;
     ptrdiff_t num3_offset = (char*)&my_struct_ptr->num3 - (char*)my_struct_ptr;
+    ptrdiff_t short_text_offset = (char*)&my_struct_ptr->short_text - (char*)my_struct_ptr;
+    ptrdiff_t long_text_offset = (char*)&my_struct_ptr->long_text - (char*)my_struct_ptr;
     for(;;) {
         printf("\33[H\33[2J");
-        printf("| NAME\t\t | VALUE\t | OFFSET\t |\n");
-        printf("| num\t\t | %d\t\t | 0x%lx\t\t |\n", my_struct.num, num_offset);
-        printf("| num2\t\t | %d\t\t | 0x%lx\t\t |\n", my_struct.num2, num2_offset);
-        printf("| num3\t\t | %d\t\t | 0x%lx\t\t |\n", my_struct.num3, num3_offset);
-        puts("");
-        printf("| short_text:\t | %s\n", my_struct.short_text);
-        printf("| long_text:\t | %s\n", my_struct.long_text);
-        puts("");
+        printf("| %-12s | %-12s | %-10s |\n", "NAME", "VALUE", "OFFSET");
+        printf("| %-12s | %12d | 0x%08lx |\n", "num",  my_struct.num,        num_offset);
+        printf("| %-12s | %12d | 0x%08lx |\n", "num2", my_struct.num2,       num2_offset);
+        printf("| %-12s | %12d | 0x%08lx |\n", "num3", my_struct.num3,       num3_offset);
+        puts  ("|------------------------------------------|");
+        printf("| %-12s | %.30s\n", "short_text:",  my_struct.short_text);
+        printf("| %-12s | 0x%08lx\n", "offset:", short_text_offset);
+        printf("| %-12s | %.64s...\n", "long_text:",   my_struct.long_text);
+        printf("| %-12s | 0x%08lx\n", "offset:",  long_text_offset);
+        puts  ("|------------------------------------------|");
         printf("struct ptr: %p\n", my_struct_ptr);
-
 
         scanf("%*c");
     }

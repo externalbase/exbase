@@ -1,9 +1,8 @@
-use std::process;
+use exbase::{MemoryAccessor, Process, ProcessInfo, SysMem};
 
-use exbase::{MemoryAccessor, Process, ProcessInfo};
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Default)]
 pub struct MyStruct {
     pub num: i32,
     pub long_text: usize,
@@ -14,64 +13,81 @@ pub struct MyStruct {
 }
 
 pub fn main() {
-    let processes = exbase::get_process_info_list("ABC123").expect("Failed to get processes");
+    let proc_info_list = exbase::get_process_info_list("ABC123").expect("Failed to get processes");
+    let out_len = proc_info_list.len();
 
-    if processes.len() > 1 {
-        println!("Warning: More than one process found");
+    if out_len == 0 {
+        eprintln!("Не найдено ни одного процесса");
+        std::process::exit(1);
     }
-
-    let process_info = processes.iter().next().expect("Not found");
-
-    for lib in process_info.get_libraries().unwrap() {
-        if lib.can_read() {
-            println!("Address: 0x{:x}\tLocation: {}", lib.get_address(), lib.get_bin())
+    if out_len > 1 {
+        eprintln!("Найдено {} процессов", out_len);
+        for i in 0..out_len {
+            eprintln!("{}. PID: {}", i, proc_info_list[i].pid());
         }
+        std::process::exit(1);
     }
 
-    let struct_ptr = read_ptr("my struct pointer: ");
-    println!("ptr: 0x{:x}", struct_ptr);
+    let proc_info = proc_info_list.iter().next().unwrap();
 
-    let pid = process_info.get_pid();
-    let process = process_info.attach(exbase::StreamMem::new(pid).unwrap());
+    print_process_info(proc_info);
+    print_libraries(proc_info);
+    
+    // Если StreamMem: Не удалось открыть /proc/{pid}/mem
+    // Если SystemMem: Недостаточно прав
+    let proc = proc_info.attach(SysMem::new(proc_info.pid()).unwrap());
 
-    let my_struct: MyStruct = process.memory.read(struct_ptr);
-    print_struct(&process.memory, &my_struct);
-
-    let new_struct = MyStruct {
-        num: -20,
-        long_text: 0, // null
-        short_text: 0, // null
-        num2: 1234,
-        _padding: [0u8; 16],
-        num3: 33,
-    };
-    process.memory.write(struct_ptr, new_struct);
-    process.memory.write(struct_ptr + 0x18, 3333);
-    process.memory.write(struct_ptr + 0x2a, -44);
-
-    let my_struct: MyStruct = process.memory.read(struct_ptr);
-    print_struct(&process.memory, &my_struct);
+    read_write_field(&proc);
+    read_write_struct(&proc);
 }
 
-pub fn print_struct(mem: &impl MemoryAccessor, my_struct: &MyStruct) {
-    println!("num: {}", my_struct.num);
-    println!("long_text: {}", mem.read_string(my_struct.long_text, 64));
-    println!("short_text: {}", mem.read_string(my_struct.short_text, 64));
-    println!("num2: {}", my_struct.num2);
-    println!("_padding: {} bytes", my_struct._padding.len());
-    println!("num3: {}\n", my_struct.num3);
+fn print_process_info(proc_info: &ProcessInfo) {
+    println!("PID: {}", proc_info.pid());
+    println!("Name: {}", proc_info.name());
+    println!("Cmd: {}", proc_info.cmd());
+    println!("Executable: {}\n", proc_info.exe());
 }
 
-pub fn read_ptr(label: &str) -> usize {
-    use std::io::Write;
+fn print_libraries(proc_info: &ProcessInfo) {
+    let libraries = proc_info.get_libraries().expect("Не удалось получить библиотеки");
 
-    print!("{}", label);
-    std::io::stdout().flush().unwrap();
-    let mut s = String::new();
-    std::io::stdin().read_line(&mut s).unwrap();
-    usize::from_str_radix(s.trim_start_matches("0x").trim_end(), 16).unwrap()
+    for lib in libraries {
+        println!("Binary path: {}", lib.get_bin());
+        println!("Address: 0x{:x}", lib.get_address());
+        println!("Size: {} bytes\n", lib.get_size());
+    }
+
+}
+
+fn read_write_field(proc: &Process<SysMem>) {
+    let addr: usize = 0x7ffd5219c5d0;
+    let num2 = proc.memory.read::<i32>(addr + 0x18) * -1;
+    proc.memory.write::<i32>(addr + 0x18, num2);
+}
+
+fn read_write_struct(proc: &Process<SysMem>) {
+    let addr: usize = 0x7ffd5219c5d0;
+    let mut my_struct: MyStruct = proc.memory.read(addr);
+    my_struct.num += 3;
+    my_struct.num3 = my_struct.num3.wrapping_mul(2);
+    proc.memory.write(addr, my_struct);
+
+    let short_text = proc.memory.read_string(my_struct.short_text, 256);
+    println!("short_text: {}, text len: {}", short_text, short_text.len());
+
+    // vfile
+    // proc.memory.write_buffer(b"hi\0", my_struct.long_text);
+
 }
 
 // pub fn e2() {
 //     let _proc = ProcessInfo::from_pid(1234).expect("Not found or permission denied");
+// }
+
+// pub fn e3() {
+//     let _proc = exbase::get_process_info_list("ABC123")
+//         .expect("Failed to get processes")
+//         .iter()
+//         .next()
+//         .expect("Not found");
 // }
