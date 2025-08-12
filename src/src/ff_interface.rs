@@ -1,6 +1,8 @@
 use std::{ffi::{c_char, c_int, c_uint, c_void, CString}, mem, ptr};
 
-use crate::{LibraryInfo, MemoryAccessor, Process, ProcessInfo, StreamMem, SysMem};
+use crate::{LibraryInfo, MemoryAccessor, Process, ProcessInfo, SysMem};
+#[cfg(target_os = "linux")]
+use crate::StreamMem;
 use ffi_utils::*;
 
 pub type CProcessInfo = *mut c_void;
@@ -55,17 +57,17 @@ pub unsafe extern "C" fn process_info_get_libraries(p_proc: CProcessInfo, out_le
  * ProcessInfo
  */
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_info_from_pid(pid: c_int) -> CProcessInfo {
-    match ProcessInfo::from_pid(pid as u32) {
-        Some(proc_info) => {
-            Box::into_raw(Box::new(proc_info)) as CProcessInfo
-        },
-        None => {
-            ptr::null_mut()
-        },
-    }
-}
+// #[unsafe(no_mangle)]
+// pub unsafe extern "C" fn process_info_from_pid(pid: c_int) -> CProcessInfo {
+//     match ProcessInfo::from_pid(pid as u32) {
+//         Some(proc_info) => {
+//             Box::into_raw(Box::new(proc_info)) as CProcessInfo
+//         },
+//         None => {
+//             ptr::null_mut()
+//         },
+//     }
+// }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn free_process_info(p_proc: CProcessInfo) {

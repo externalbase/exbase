@@ -28,14 +28,15 @@ pub fn main() {
         std::process::exit(1);
     }
 
-    let proc_info = proc_info_list.iter().next().unwrap();
+    let proc_info = proc_info_list.into_iter().next().unwrap();
 
-    print_process_info(proc_info);
-    print_libraries(proc_info);
+    print_process_info(&proc_info);
+    print_libraries(&proc_info);
     
     // Если StreamMem: Не удалось открыть /proc/{pid}/mem
     // Если SystemMem: Недостаточно прав
-    let proc = proc_info.attach(SysMem::new(proc_info.pid()).unwrap());
+    let pid = proc_info.pid();
+    let proc = proc_info.attach(SysMem::new(pid).unwrap());
 
     read_write_field(&proc);
     read_write_struct(&proc);
@@ -60,13 +61,13 @@ fn print_libraries(proc_info: &ProcessInfo) {
 }
 
 fn read_write_field(proc: &Process<SysMem>) {
-    let addr: usize = 0x7ffd5219c5d0;
+    let addr: usize = 0x000000439D1FF740;
     let num2 = proc.memory.read::<i32>(addr + 0x18) * -1;
     proc.memory.write::<i32>(addr + 0x18, num2);
 }
 
 fn read_write_struct(proc: &Process<SysMem>) {
-    let addr: usize = 0x7ffd5219c5d0;
+    let addr: usize = 0x000000439D1FF740;
     let mut my_struct: MyStruct = proc.memory.read(addr);
     my_struct.num += 3;
     my_struct.num3 = my_struct.num3.wrapping_mul(2);
@@ -74,10 +75,6 @@ fn read_write_struct(proc: &Process<SysMem>) {
 
     let short_text = proc.memory.read_string(my_struct.short_text, 256);
     println!("short_text: {}, text len: {}", short_text, short_text.len());
-
-    // vfile
-    // proc.memory.write_buffer(b"hi\0", my_struct.long_text);
-
 }
 
 // pub fn e2() {

@@ -3,7 +3,13 @@ use std::{ffi::c_int, fs::{self, File}, io::{BufRead, BufReader}};
 use crate::{LibraryInfo, ProcessInfo};
 
 impl ProcessInfo {
-    pub fn from_pid(pid: u32) -> Option<Self> {
+    pub fn attach<M: MemoryAccessor>(self, memory: M) -> Process<M> {
+        Process {
+            info: self,
+            memory,
+        }
+    }
+    pub(crate) fn from_pid(pid: u32) -> Option<Self> {
         if !is_alive(pid as i32) {
             return None;
         }
@@ -58,12 +64,4 @@ fn parse_segment(line: String) -> Option<LibraryInfo> {
         }
     }
     None
-}
-
-pub fn is_alive(pid: c_int) -> bool {
-    kill(pid, 0) == 0
-}
-
-unsafe extern "C" {
-    safe fn kill(pid: c_int, sig: c_int) -> c_int;
 }

@@ -4,7 +4,7 @@ use crate::{MemoryAccessor, StreamMem, SysMem};
 
 #[allow(non_camel_case_types)]
 #[repr(C)]
-pub struct iovec {
+struct iovec {
     pub iov_base: *mut c_void,
     pub iov_len: usize, // size_t
 }
@@ -32,7 +32,7 @@ impl MemoryAccessor for SysMem {
         };
         if process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0) < 0 {
             let err = std::io::Error::last_os_error();
-            println!("process_vm_readv: {}", err);
+            eprintln!("process_vm_readv: {}", err);
         }
     }
 
@@ -54,7 +54,7 @@ impl MemoryAccessor for SysMem {
 }
 
 impl StreamMem {
-    pub fn new(pid: u32) -> Result<Self, std::io::Error> {
+    pub fn new(pid: u32) -> Result<Self> {
         let mut mem_options = OpenOptions::new();
         let mem_options = mem_options.read(true);
 
@@ -70,8 +70,8 @@ impl StreamMem {
 }
 
 impl SysMem {
-    pub fn new(pid: u32) -> Result<Self, std::io::Error> {
-        // check 
+    pub fn new(pid: u32) -> Result<Self> {
+        // is alive
         Ok(Self {
             pid: pid as i32
         })
