@@ -18,6 +18,7 @@ impl MemoryAccessor for SysMem {
         }
     }
 
+    #[cfg(not(feature = "read_only"))]
     fn write_buffer(&self, buf: &[u8], addr: usize) {
         let suc = unsafe {
             let mut bytesread: usize = 0;

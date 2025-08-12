@@ -124,7 +124,6 @@ void read_write_struct(Process proc) {
     printf("short_text: %s, text len: %ld\n", short_text, strlen(short_text));
     free_cstring(short_text);
 
-    // vfile
-    // char new_text[] = "hi";
-    // process_write_buffer_vfile(proc, (const unsigned char*)new_text, sizeof(new_text), my_struct.long_text);
+    char new_text[] = ":p";
+    process_write_buffer(proc, (const unsigned char*)new_text, sizeof(new_text), my_struct.long_text);
 }

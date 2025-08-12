@@ -17,10 +17,15 @@ unsafe extern "C" {
         flags: c_ulong
     ) -> isize;
 
+    #[cfg(not(feature = "read_only"))]
     pub(crate) safe fn process_vm_writev(
         pid: c_int,
         local_iov: *const iovec, liovcnt: c_ulong,
         remote_iov: *const iovec, riovcnt: c_ulong,
         flags: c_ulong
     ) -> isize;
+}
+
+pub(crate) fn is_alive(pid: i32) -> bool {
+    kill(pid, 0) == 0
 }

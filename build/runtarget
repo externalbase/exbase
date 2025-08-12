@@ -1,0 +1,11 @@
+#!/bin/bash
+
+cd ../examples/c
+gcc target.c -o bin/ABC123
+
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
+cd bin
+./ABC123

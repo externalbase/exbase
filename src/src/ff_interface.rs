@@ -4,9 +4,6 @@ use crate::{LibraryInfo, MemoryAccessor, Process, ProcessInfo, SysMem};
 #[cfg(target_os = "linux")]
 use crate::StreamMem;
 use ffi_utils::*;
-use crate::error::ErrorFFI;
-
-pub type Result<T> = std::result::Result<T, ErrorFFI>;
 
 pub type CProcessInfo = *mut c_void;
 pub type CLibraryInfo = *mut c_void;

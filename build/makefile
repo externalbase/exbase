@@ -1,7 +1,7 @@
 LIB_NAME := exbase
 
-CRATE_DIR := src
-EXAMPLE_DIR := examples/c
+CRATE_DIR := ../src
+EXAMPLE_DIR := ../examples/c
 LDIR := $(CRATE_DIR)/target/release
 OUTDIR := $(EXAMPLE_DIR)/bin
 

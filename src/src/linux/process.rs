@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::{BufRead, BufReader}};
+use std::{fs::{self, File}, io::{BufRead, BufReader}, path::Path};
 
 use crate::{bindings, LibraryInfo, MemoryAccessor, Process, ProcessInfo, error::{Result, Error}};
 
@@ -10,7 +10,7 @@ impl ProcessInfo {
         }
     }
     pub(crate) fn from_pid(pid: u32) -> Result<Self> {
-        if !is_alive(pid as i32) {
+        if !bindings::is_alive(pid as i32) {
             return Err(Error::other("Process is inactive"));
         }
         Ok(Self {
@@ -22,7 +22,7 @@ impl ProcessInfo {
     }
 
     pub fn get_libraries(&self) -> Result<Vec<LibraryInfo>> {
-        if !is_alive(self.pid as i32) {
+        if !bindings::is_alive(self.pid as i32) {
             return Err(Error::other("Process is inactive"));
         }
         let mut result = Vec::new();
@@ -50,12 +50,12 @@ fn parse_segment(line: String) -> Option<LibraryInfo> {
             _ = iterator.next()?;                   // inode
             let path = iterator.next()?.trim();
             if path == "[heap]" || path == "[stack]" || (path.starts_with('/') && path.contains(".so")) {
-                
+                let name = Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(path);
                 let addr_range: Vec<_> = addr_range.split('-').collect();
                 let start = usize::from_str_radix(addr_range.get(0)?, 16).ok()?;
                 let end = usize::from_str_radix(addr_range.get(1)?, 16).ok()?;
                 return  Some(LibraryInfo {
-                    name: path.to_owned(),
+                    name: name.to_owned(),
                     address: start,
                     size: end - start,
                     perms: perms.to_string()
@@ -64,8 +64,4 @@ fn parse_segment(line: String) -> Option<LibraryInfo> {
         }
     }
     None
-}
-
-pub fn is_alive(pid: i32) -> bool {
-    bindings::kill(pid, 0) == 0
 }

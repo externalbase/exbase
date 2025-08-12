@@ -1,6 +1,6 @@
 use std::{ffi::c_void, fs::OpenOptions, os::unix::fs::FileExt};
 
-use crate::{MemoryAccessor, StreamMem, SysMem, bindings::*, error::Result};
+use crate::{bindings::{self, *}, error::Result, MemoryAccessor, StreamMem, SysMem, error::Error};
 
 impl MemoryAccessor for StreamMem {
     fn read_buffer(&self, buf: &mut [u8], addr: usize) {
@@ -29,6 +29,7 @@ impl MemoryAccessor for SysMem {
         }
     }
 
+    #[cfg(not(feature = "read_only"))]
     fn write_buffer(&self, buf: &[u8], addr: usize) {
         let local_iov = iovec {
             iov_base: buf.as_ptr() as *mut c_void,
@@ -64,7 +65,9 @@ impl StreamMem {
 
 impl SysMem {
     pub fn new(pid: u32) -> Result<Self> {
-        // is alive
+        if !bindings::is_alive(pid as i32) {
+            return Err(Error::other("Process is inactive"));
+        }
         Ok(Self {
             pid: pid as i32
         })

@@ -27,7 +27,6 @@ pub trait MemoryAccessor {
         unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const T) }
     }
 
-    /// max_len: 256
     fn read_string(&self, addr: usize, max_len: usize) -> String {
         let mut buf = vec![0u8; max_len];
         self.read_buffer(&mut buf, addr);

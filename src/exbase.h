@@ -13,7 +13,6 @@ typedef void* Process;
  */
 
 ProcessInfo get_process_info_list(const char* name, int* out_len);
-// ProcessInfo process_info_from_pid(int pid);
 unsigned int process_info_pid(ProcessInfo proc_info);
 const char* process_info_name(ProcessInfo proc_info);
 const char* process_info_cmd(ProcessInfo proc_info);

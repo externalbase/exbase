@@ -2,7 +2,6 @@ use std::sync::Mutex;
 
 use exbase::{MemoryAccessor, Process, ProcessInfo, SysMem};
 
-
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 pub struct MyStruct {
@@ -64,7 +63,6 @@ fn print_libraries(proc_info: &ProcessInfo) {
             *addr = lib.address();
         }
     }
-
 }
 
 fn read_write_field(proc: &Process<SysMem>) {
@@ -82,4 +80,5 @@ fn read_write_struct(proc: &Process<SysMem>) {
 
     let short_text = proc.memory.read_string(my_struct.short_text, 256);
     println!("short_text: {}, text len: {}", short_text, short_text.len());
+    proc.memory.write_buffer(b":p\0", my_struct.long_text);
 }
