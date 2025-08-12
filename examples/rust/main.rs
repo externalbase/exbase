@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use exbase::{MemoryAccessor, Process, ProcessInfo, SysMem};
 
 
@@ -11,6 +13,8 @@ pub struct MyStruct {
     pub _padding: [u8; 16],
     pub num3: i8,
 }
+
+static HEAP_ADDR: Mutex<usize> = Mutex::new(0);
 
 pub fn main() {
     let proc_info_list = exbase::get_process_info_list("ABC123").expect("Failed to get processes");
@@ -33,8 +37,6 @@ pub fn main() {
     print_process_info(&proc_info);
     print_libraries(&proc_info);
     
-    // Если StreamMem: Не удалось открыть /proc/{pid}/mem
-    // Если SystemMem: Недостаточно прав
     let pid = proc_info.pid();
     let proc = proc_info.attach(SysMem::new(pid).unwrap());
 
@@ -53,21 +55,26 @@ fn print_libraries(proc_info: &ProcessInfo) {
     let libraries = proc_info.get_libraries().expect("Не удалось получить библиотеки");
 
     for lib in libraries {
-        println!("Binary path: {}", lib.get_bin());
-        println!("Address: 0x{:x}", lib.get_address());
-        println!("Size: {} bytes\n", lib.get_size());
+        println!("Name: {}", lib.name());
+        println!("Address: 0x{:x}", lib.address());
+        println!("Size: {} bytes\n", lib.size());
+
+        if lib.name() == "[heap]" {
+            let mut addr = HEAP_ADDR.lock().unwrap();
+            *addr = lib.address();
+        }
     }
 
 }
 
 fn read_write_field(proc: &Process<SysMem>) {
-    let addr: usize = 0x000000439D1FF740;
+    let addr: usize = *HEAP_ADDR.lock().unwrap() + 0x2a0;
     let num2 = proc.memory.read::<i32>(addr + 0x18) * -1;
     proc.memory.write::<i32>(addr + 0x18, num2);
 }
 
 fn read_write_struct(proc: &Process<SysMem>) {
-    let addr: usize = 0x000000439D1FF740;
+    let addr: usize = *HEAP_ADDR.lock().unwrap() + 0x2a0;
     let mut my_struct: MyStruct = proc.memory.read(addr);
     my_struct.num += 3;
     my_struct.num3 = my_struct.num3.wrapping_mul(2);
@@ -76,15 +83,3 @@ fn read_write_struct(proc: &Process<SysMem>) {
     let short_text = proc.memory.read_string(my_struct.short_text, 256);
     println!("short_text: {}, text len: {}", short_text, short_text.len());
 }
-
-// pub fn e2() {
-//     let _proc = ProcessInfo::from_pid(1234).expect("Not found or permission denied");
-// }
-
-// pub fn e3() {
-//     let _proc = exbase::get_process_info_list("ABC123")
-//         .expect("Failed to get processes")
-//         .iter()
-//         .next()
-//         .expect("Not found");
-// }

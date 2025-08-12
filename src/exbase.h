@@ -30,14 +30,14 @@ void free_process_info(ProcessInfo proc_info);
  */
 
 LibraryInfo process_info_get_libraries(ProcessInfo lib, int* out_len);
-const char* library_info_bin(LibraryInfo lib);
+const char* library_info_name(LibraryInfo lib);
 const char* library_info_perms(LibraryInfo lib);
 uintptr_t library_info_address(LibraryInfo lib);
 size_t library_info_size(LibraryInfo lib);
 void free_library_info_list(LibraryInfo libraries, int len);
 
 /*
- * Открытый процесс (mem file, system calls)
+ * Attached process (mem file, system calls)
  */
 
 #ifdef __linux__

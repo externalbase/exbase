@@ -1,6 +1,6 @@
-use std::{ffi::c_int, fs::{self, File}, io::{BufRead, BufReader}};
+use std::{fs::{self, File}, io::{BufRead, BufReader}};
 
-use crate::{LibraryInfo, ProcessInfo};
+use crate::{bindings, LibraryInfo, MemoryAccessor, Process, ProcessInfo, error::{Result, Error}};
 
 impl ProcessInfo {
     pub fn attach<M: MemoryAccessor>(self, memory: M) -> Process<M> {
@@ -9,24 +9,24 @@ impl ProcessInfo {
             memory,
         }
     }
-    pub(crate) fn from_pid(pid: u32) -> Option<Self> {
+    pub(crate) fn from_pid(pid: u32) -> Result<Self> {
         if !is_alive(pid as i32) {
-            return None;
+            return Err(Error::other("Process is inactive"));
         }
-        Some(Self {
+        Ok(Self {
             pid,
-            name: fs::read_to_string(format!("/proc/{pid}/comm")).ok()?.trim_end().to_owned(),
-            cmd: fs::read_to_string(format!("/proc/{pid}/cmdline")).ok()?.trim_end().to_owned(),
-            exe: fs::read_link(format!("/proc/{pid}/exe")).ok()?.to_string_lossy().into_owned()
+            name: fs::read_to_string(format!("/proc/{pid}/comm"))?.trim_end().to_owned(),
+            cmd: fs::read_to_string(format!("/proc/{pid}/cmdline"))?.trim_end().to_owned(),
+            exe: fs::read_link(format!("/proc/{pid}/exe"))?.to_string_lossy().into_owned()
         })
     }
 
-    pub fn get_libraries(&self) -> Option<Vec<LibraryInfo>> {
+    pub fn get_libraries(&self) -> Result<Vec<LibraryInfo>> {
         if !is_alive(self.pid as i32) {
-            return None;
+            return Err(Error::other("Process is inactive"));
         }
         let mut result = Vec::new();
-        let maps = File::open(format!("/proc/{}/maps", self.pid)).ok()?;
+        let maps = File::open(format!("/proc/{}/maps", self.pid))?;
         for line in BufReader::new(maps).lines() {
             if let Ok(line) = line {
                 if let Some(segment) = parse_segment(line.trim_end().to_owned()) {
@@ -34,7 +34,7 @@ impl ProcessInfo {
                 }
             }
         }
-        Some(result)
+        Ok(result)
     }
 }
 
@@ -49,13 +49,13 @@ fn parse_segment(line: String) -> Option<LibraryInfo> {
             _ = iterator.next()?;                   // dev number
             _ = iterator.next()?;                   // inode
             let path = iterator.next()?.trim();
-            if path.starts_with('/') && path.contains(".so") {
+            if path == "[heap]" || path == "[stack]" || (path.starts_with('/') && path.contains(".so")) {
                 
                 let addr_range: Vec<_> = addr_range.split('-').collect();
                 let start = usize::from_str_radix(addr_range.get(0)?, 16).ok()?;
                 let end = usize::from_str_radix(addr_range.get(1)?, 16).ok()?;
                 return  Some(LibraryInfo {
-                    bin: path.to_owned(),
+                    name: path.to_owned(),
                     address: start,
                     size: end - start,
                     perms: perms.to_string()
@@ -64,4 +64,8 @@ fn parse_segment(line: String) -> Option<LibraryInfo> {
         }
     }
     None
+}
+
+pub fn is_alive(pid: i32) -> bool {
+    bindings::kill(pid, 0) == 0
 }

@@ -13,8 +13,7 @@ mod tests;
 mod ff_interface;
 pub mod error;
 
-use error::{Result, Error};
-use bindings::*;
+use error::Result;
 use std::fs::File;
 
 pub trait MemoryAccessor {
@@ -77,24 +76,13 @@ pub struct ProcessInfo {
 
 #[derive(Debug, Clone)]
 pub struct LibraryInfo {
-    bin: String,
+    name: String,
     address: usize,
     size: usize,
     perms: String,
 }
 
 impl ProcessInfo {
-    
-    #[cfg(target_os = "linux")]
-    pub fn is_alive(&self) -> bool {
-        bindings::kill(pid, 0) == 0
-    }
-    
-    #[cfg(target_os = "windows")]
-    pub fn is_alive(&self) -> bool {
-        todo!()
-    }
-
     pub fn pid(&self) -> u32 {
         self.pid
     }
@@ -113,15 +101,15 @@ impl ProcessInfo {
 }
 
 impl LibraryInfo {
-    pub fn get_bin(&self) -> String {
-        self.bin.to_string()
+    pub fn name(&self) -> String {
+        self.name.to_string()
     }
 
-    pub fn get_address(&self) -> usize {
+    pub fn address(&self) -> usize {
         self.address
     }
 
-    pub fn get_size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.size
     }
 
@@ -141,10 +129,10 @@ impl<M: MemoryAccessor> Process<M> {
 }
 
 #[cfg(target_os = "linux")]
-pub fn get_process_info_list<S: AsRef<str>>(name: S) -> Option<Vec<ProcessInfo>> {
+pub fn get_process_info_list<S: AsRef<str>>(name: S) -> Result<Vec<ProcessInfo>> {
     use std::{fs, io::Read};
     let mut result: Vec<ProcessInfo> = Vec::new();
-    for entry in fs::read_dir("/proc").ok()? {
+    for entry in fs::read_dir("/proc")? {
         if let Ok(entry) = entry {
             let pid = match entry.file_name().to_string_lossy().parse::<u32>() {
                 Ok(r) => r,
@@ -161,7 +149,7 @@ pub fn get_process_info_list<S: AsRef<str>>(name: S) -> Option<Vec<ProcessInfo>>
             }
         }
     }
-    Some(result)
+    Ok(result)
 }
 
 #[cfg(target_os = "windows")]

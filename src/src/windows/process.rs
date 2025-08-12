@@ -29,7 +29,7 @@ impl ProcessInfo {
 
     pub fn get_libraries(&self) -> Result<Vec<LibraryInfo>> {
         if self.handle <= 0 as _ {
-            return  Err(Error::os("process handle is null"));
+            return  Err(Error::os("Process handle is null"));
         }
 
         let mut mods = vec![HMODULE::default(); 512];
@@ -70,7 +70,7 @@ impl ProcessInfo {
 
             result.push(
                 LibraryInfo {
-                    bin: module_name, // todo: path
+                    bin: module_name,
                     address: mod_info.lpBaseOfDll as usize,
                     size: mod_info.SizeOfImage as usize,
                     #[cfg(feature = "read_only")]

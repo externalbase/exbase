@@ -1,13 +1,6 @@
-use std::{ffi::{c_int, c_ulong, c_void}, fs::OpenOptions, os::unix::fs::FileExt};
+use std::{ffi::c_void, fs::OpenOptions, os::unix::fs::FileExt};
 
-use crate::{MemoryAccessor, StreamMem, SysMem};
-
-#[allow(non_camel_case_types)]
-#[repr(C)]
-struct iovec {
-    pub iov_base: *mut c_void,
-    pub iov_len: usize, // size_t
-}
+use crate::{MemoryAccessor, StreamMem, SysMem, bindings::*, error::Result};
 
 impl MemoryAccessor for StreamMem {
     fn read_buffer(&self, buf: &mut [u8], addr: usize) {
@@ -76,20 +69,4 @@ impl SysMem {
             pid: pid as i32
         })
     }
-}
-
-unsafe extern "C" {
-    safe fn process_vm_readv(
-        pid: c_int,
-        local_iov: *const iovec, liovcnt: c_ulong,
-        remote_iov: *const iovec, riovcnt: c_ulong,
-        flags: c_ulong
-    ) -> isize;
-
-    safe fn process_vm_writev(
-        pid: c_int,
-        local_iov: *const iovec, liovcnt: c_ulong,
-        remote_iov: *const iovec, riovcnt: c_ulong,
-        flags: c_ulong
-    ) -> isize;
 }

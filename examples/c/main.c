@@ -17,6 +17,8 @@ void print_libraries(LibraryInfo lib);
 void read_write_field(Process proc);
 void read_write_struct(Process proc);
 
+uintptr_t HEAP_ADDR = 0;
+
 int main(int argc, char** argv) {
     int out_len = 0;
     ProcessInfo* proc_info_list = get_process_info_list("ABC123", &out_len);
@@ -47,11 +49,12 @@ int main(int argc, char** argv) {
         free_process_info_list(proc_info_list, out_len);
         return 1;
     }
+    // ProcessInfo клонирован в Process. Больше нет необходимости в proc_info_list
+    free_process_info_list(proc_info_list, out_len);
 
     read_write_field(proc);
     read_write_struct(proc);
 
-    free_process_info_list(proc_info_list, out_len);
     return 0;
 }
 
@@ -81,16 +84,20 @@ void print_libraries(ProcessInfo proc_info) {
     
     for (int i = 0; i < out_len; ++i) {
         LibraryInfo lib = *(libraries + i);
-        const char* bin = library_info_bin(lib);
+        const char* name = library_info_name(lib);
         const char* perms = library_info_perms(lib);
         uintptr_t address = library_info_address(lib);
         size_t size = library_info_size(lib);
 
-        printf("Binary path: %s\n", bin);
+        printf("Name: %s\n", name);
         printf("Address: %p\n", (void*)address);
         printf("Size: %ld (bytes)\n\n", size);
 
-        free_cstring(bin);
+        if (strcmp("[heap]", name) == 0) {
+            HEAP_ADDR = address;
+        }
+
+        free_cstring(name);
         free_cstring(perms);
     }
 
@@ -98,7 +105,7 @@ void print_libraries(ProcessInfo proc_info) {
 }
 
 void read_write_field(Process proc) {
-    uintptr_t addr = 0x7ffd5219c5d0;
+    uintptr_t addr = HEAP_ADDR + 0x2a0;
     int num2;
     process_read(proc, num2, addr + 0x18);
     num2 *= -1;
@@ -106,7 +113,7 @@ void read_write_field(Process proc) {
 }
 
 void read_write_struct(Process proc) {
-    uintptr_t addr = 0x7ffd5219c5d0;
+    uintptr_t addr = HEAP_ADDR + 0x2a0;
     MyStruct my_struct;
     process_read(proc, my_struct, addr);
     my_struct.num += 3;
@@ -121,12 +128,3 @@ void read_write_struct(Process proc) {
     // char new_text[] = "hi";
     // process_write_buffer_vfile(proc, (const unsigned char*)new_text, sizeof(new_text), my_struct.long_text);
 }
-
-// void e2() {
-//     ProcessInfo proc_info = process_info_from_pid(1234);
-//     if (proc_info == NULL) {
-//         puts("Not found or permission denied");
-//         return;
-//     }
-//     free_process_info(proc_info);
-// }

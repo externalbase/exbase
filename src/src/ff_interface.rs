@@ -4,6 +4,9 @@ use crate::{LibraryInfo, MemoryAccessor, Process, ProcessInfo, SysMem};
 #[cfg(target_os = "linux")]
 use crate::StreamMem;
 use ffi_utils::*;
+use crate::error::ErrorFFI;
+
+pub type Result<T> = std::result::Result<T, ErrorFFI>;
 
 pub type CProcessInfo = *mut c_void;
 pub type CLibraryInfo = *mut c_void;
@@ -11,8 +14,8 @@ pub type CProcess = *mut c_void;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn get_process_info_list(name: *const c_char, out_len: *mut c_int) -> CProcessInfo {
-    if let Some(name) = rstr(name) {
-        if let Some(vec_r) = crate::get_process_info_list(name) {
+    if let Ok(name) = rstr(name) {
+        if let Ok(vec_r) = crate::get_process_info_list(name) {
             if vec_r.len() > 0 {
                 let mut vec_c = Vec::new();
                 for p in vec_r {
@@ -35,7 +38,7 @@ pub unsafe extern "C" fn get_process_info_list(name: *const c_char, out_len: *mu
 pub unsafe extern "C" fn process_info_get_libraries(p_proc: CProcessInfo, out_len: *mut c_int) -> CLibraryInfo {
     throw_if_null(p_proc);
     let proc: &ProcessInfo = deref(p_proc);
-    if let Some(vec_r) = proc.get_libraries() {
+    if let Ok(vec_r) = proc.get_libraries() {
         if vec_r.len() > 0 {
             let mut vec_c = Vec::new();
             for lib in vec_r {
@@ -56,18 +59,6 @@ pub unsafe extern "C" fn process_info_get_libraries(p_proc: CProcessInfo, out_le
 /**
  * ProcessInfo
  */
-
-// #[unsafe(no_mangle)]
-// pub unsafe extern "C" fn process_info_from_pid(pid: c_int) -> CProcessInfo {
-//     match ProcessInfo::from_pid(pid as u32) {
-//         Some(proc_info) => {
-//             Box::into_raw(Box::new(proc_info)) as CProcessInfo
-//         },
-//         None => {
-//             ptr::null_mut()
-//         },
-//     }
-// }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn free_process_info(p_proc: CProcessInfo) {
@@ -108,7 +99,7 @@ pub unsafe extern "C" fn process_info_attach(p_proc: CProcessInfo) -> CProcess {
     throw_if_null(p_proc);
     let proc_info: &ProcessInfo = deref(p_proc);
     if let Ok(m) = SysMem::new(proc_info.pid) {
-        let proc = proc_info.attach(m);
+        let proc = proc_info.clone().attach(m);
         return Box::into_raw(Box::new(proc)) as CProcess;
     }
     ptr::null_mut()
@@ -120,22 +111,21 @@ pub unsafe extern "C" fn process_info_attach_vfile(p_proc: CProcessInfo) -> CPro
     throw_if_null(p_proc);
     let proc_info: &ProcessInfo = deref(p_proc);
     if let Ok(m) = StreamMem::new(proc_info.pid) {
-        let proc = proc_info.attach(m);
+        let proc = proc_info.clone().attach(m);
         return Box::into_raw(Box::new(proc)) as CProcess;
     }
     ptr::null_mut()
 }
-
 
 /**
  * LibraryInfo
  */
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn library_info_bin(p_lib: CLibraryInfo) -> *const c_char {
+pub unsafe extern "C" fn library_info_name(p_lib: CLibraryInfo) -> *const c_char {
     throw_if_null(p_lib);
     let lib: &LibraryInfo = deref(p_lib);
-    CString::new(lib.bin.clone()).unwrap().into_raw()
+    CString::new(lib.name.clone()).unwrap().into_raw()
 }
 
 #[unsafe(no_mangle)]
@@ -269,6 +259,7 @@ pub unsafe extern "C" fn free_cstring(s: *const c_char) {
 
 pub(crate) mod ffi_utils {
     use std::ffi::{c_char, c_void, CStr};
+    use crate::error::ErrorFFI;
 
     pub fn throw_if_null(ptr: *mut c_void) {
         if ptr.is_null() {
@@ -280,18 +271,10 @@ pub(crate) mod ffi_utils {
         unsafe { &*(p as *const T) }
     }
 
-    pub fn rstr(p_str: *const c_char) -> Option<&'static str> {
+    pub fn rstr(p_str: *const c_char) -> Result<&'static str, ErrorFFI> {
         if p_str.is_null() {
-            eprint!("str is null");
-            return None;
+            return Err(ErrorFFI::NullPointer { obj: "*const char".to_owned() });
         }
-        let c_str = unsafe { CStr::from_ptr(p_str) }.to_str();
-        match c_str {
-            Ok(s) => Some(s),
-            Err(e) => {
-                eprintln!("process_by_name -> {e}");
-                None
-            },
-        }
+        unsafe { CStr::from_ptr(p_str) }.to_str().map_err(ErrorFFI::Utf8Error)
     }
 }
