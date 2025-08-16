@@ -16,7 +16,6 @@ impl ProcessInfo {
         Ok(Self {
             pid,
             name: fs::read_to_string(format!("/proc/{pid}/comm"))?.trim_end().to_owned(),
-            cmd: fs::read_to_string(format!("/proc/{pid}/cmdline"))?.trim_end().to_owned(),
             exe: fs::read_link(format!("/proc/{pid}/exe"))?.to_string_lossy().into_owned()
         })
     }

@@ -78,13 +78,6 @@ pub unsafe extern "C" fn process_info_name(p_proc: CProcessInfo) -> *const c_cha
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_info_cmd(p_proc: CProcessInfo) -> *const c_char {
-    throw_if_null(p_proc);
-    let proc: &ProcessInfo = deref(p_proc);
-    CString::new(proc.cmd.chars().filter(|&c| c != '\0').collect::<String>()).unwrap().into_raw()
-}
-
-#[unsafe(no_mangle)]
 pub unsafe extern "C" fn process_info_exe(p_proc: CProcessInfo) -> *const c_char {
     throw_if_null(p_proc);
     let proc: &ProcessInfo = deref(p_proc);

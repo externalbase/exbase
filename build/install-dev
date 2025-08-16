@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+SRC_LIB="../src/target/release/libexbase.so"
+SRC_HDR="../src/exbase.h"
+DST_LIB="/usr/lib"
+DST_HDR="/usr/include"
+
+if [[ $EUID -ne 0 ]]; then
+  echo "This script must be run as root." >&2
+  exit 1
+fi
+
+echo "Installing library and header..."
+
+# Copy and set permissions
+install -Dm644 "$SRC_LIB" "$DST_LIB/$(basename "$SRC_LIB")"
+install -Dm644 "$SRC_HDR" "$DST_HDR/$(basename "$SRC_HDR")"
+
+echo "Updating linker cache..."
+ldconfig
+
+echo "Success."

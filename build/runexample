@@ -7,5 +7,4 @@ if [ $? -ne 0 ]; then
 fi
 
 cd ../examples/c/bin/
-export LD_LIBRARY_PATH=.:$LD_LIBRARY_PATH
 ./example

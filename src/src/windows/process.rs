@@ -22,7 +22,6 @@ impl ProcessInfo {
             handle,
             pid,
             name,
-            cmd: String::new(),
             exe: String::from_utf16_lossy(&exe_buf).to_owned(),
         })
     }

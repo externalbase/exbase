@@ -15,7 +15,6 @@ typedef void* Process;
 ProcessInfo get_process_info_list(const char* name, int* out_len);
 unsigned int process_info_pid(ProcessInfo proc_info);
 const char* process_info_name(ProcessInfo proc_info);
-const char* process_info_cmd(ProcessInfo proc_info);
 const char* process_info_exe(ProcessInfo proc_info);
 #ifdef __linux__
 Process process_info_attach_vfile(ProcessInfo proc_info);

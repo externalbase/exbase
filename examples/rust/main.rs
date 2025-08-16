@@ -46,7 +46,6 @@ pub fn main() {
 fn print_process_info(proc_info: &ProcessInfo) {
     println!("PID: {}", proc_info.pid());
     println!("Name: {}", proc_info.name());
-    println!("Cmd: {}", proc_info.cmd());
     println!("Executable: {}\n", proc_info.exe());
 }
 

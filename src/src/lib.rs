@@ -1,3 +1,6 @@
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+compile_error!("Windows or Linux only");
+
 #[cfg_attr(target_os = "linux", path = "linux/process.rs")]
 #[cfg_attr(target_os = "windows", path = "windows/process.rs")]
 mod process;
@@ -12,9 +15,10 @@ mod tests;
 #[cfg(feature = "ffi")]
 mod ff_interface;
 pub mod error;
+pub mod patern_scanner;
 
 use error::Result;
-use std::fs::File;
+use std::{fs::File};
 
 pub trait MemoryAccessor {
     fn read_buffer(&self, buf: &mut [u8], addr: usize);
@@ -69,7 +73,6 @@ pub struct ProcessInfo {
     handle: HANDLE,
     pid: u32,
     name: String,
-    cmd: String,
     exe: String,
 }
 
@@ -92,10 +95,6 @@ impl ProcessInfo {
 
     pub fn exe(&self) -> String {
         self.exe.clone()
-    }
-
-    pub fn cmd(&self) -> String {
-        self.cmd.clone()
     }
 }
 
@@ -143,7 +142,7 @@ pub fn get_process_info_list<S: AsRef<str>>(name: S) -> Result<Vec<ProcessInfo>>
                 .is_ok()
             {
                 if buf_comm.trim_end() == name.as_ref() {
-                    result.push(ProcessInfo::from_pid(pid)?); // display error (Может быть недостаточно доступа)
+                    result.push(ProcessInfo::from_pid(pid)?);
                 }
             }
         }

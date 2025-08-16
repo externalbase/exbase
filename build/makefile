@@ -8,15 +8,15 @@ OUTDIR := $(EXAMPLE_DIR)/bin
 CC := gcc
 CFLAGS := -I$(CRATE_DIR) -Wall
 
-.PHONY: all rust c clean
+.PHONY: all rust cmain clean
 
-all: c
+all: cmain
 
 rust: 
 	cd $(CRATE_DIR) && \
 		cargo rustc --features=ffi --release --crate-type cdylib
 
-c: rust
+cmain: rust
 	@mkdir -p $(OUTDIR)
 	$(CC) $(EXAMPLE_DIR)/main.c -o $(OUTDIR)/example $(CFLAGS) -L$(LDIR) -l$(LIB_NAME)
 	@cp $(LDIR)/lib$(LIB_NAME).so $(OUTDIR)/

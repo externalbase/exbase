@@ -43,8 +43,6 @@ int main(int argc, char** argv) {
 
     Process proc = process_info_attach(proc_info);
     if (!proc) {
-        // Если StreamMem: Не удалось открыть /proc/{pid}/mem
-        // Если SystemMem: Недостаточно прав
         printf("failed\n");
         free_process_info_list(proc_info_list, out_len);
         return 1;
@@ -61,16 +59,13 @@ int main(int argc, char** argv) {
 void print_process_info(ProcessInfo proc_info) {
     unsigned int pid = process_info_pid(proc_info);
     const char* name = process_info_name(proc_info);
-    const char* cmd = process_info_cmd(proc_info);
     const char* exe = process_info_exe(proc_info);
 
     printf("PID: %d\n", pid);
     printf("Name: %s\n", name);
-    printf("Cmd: %s\n", cmd);
     printf("Executable: %s\n\n", exe);
 
     free_cstring(name);
-    free_cstring(cmd);
     free_cstring(exe);
 }
 
