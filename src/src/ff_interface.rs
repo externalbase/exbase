@@ -1,13 +1,13 @@
 use std::{ffi::{c_char, c_int, c_uint, c_void, CString}, mem, ptr};
 
-use crate::{LibraryInfo, MemoryAccessor, Process, ProcessInfo, SysMem};
+use crate::{LibraryInfo, MemoryAccessor, ProcessInfo, SysMem};
 #[cfg(target_os = "linux")]
 use crate::StreamMem;
 use ffi_utils::*;
 
 pub type CProcessInfo = *mut c_void;
 pub type CLibraryInfo = *mut c_void;
-pub type CProcess = *mut c_void;
+pub type CMemory = *mut c_void;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn get_process_info_list(name: *const c_char, out_len: *mut c_int) -> CProcessInfo {
@@ -84,25 +84,24 @@ pub unsafe extern "C" fn process_info_exe(p_proc: CProcessInfo) -> *const c_char
     CString::new(proc.exe.clone()).unwrap().into_raw()
 }
 
+#[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_info_attach(p_proc: CProcessInfo) -> CProcess {
+pub unsafe extern "C" fn open_vfile_mem(p_proc: CProcessInfo) -> CMemory {
     throw_if_null(p_proc);
     let proc_info: &ProcessInfo = deref(p_proc);
-    if let Ok(m) = SysMem::new(proc_info.pid) {
-        let proc = proc_info.clone().attach(m);
-        return Box::into_raw(Box::new(proc)) as CProcess;
+    if let Ok(m) = StreamMem::new(proc_info.pid) {
+        return Box::into_raw(Box::new(m)) as CMemory;
     }
     ptr::null_mut()
 }
 
-#[cfg(target_os = "linux")]
+
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_info_attach_vfile(p_proc: CProcessInfo) -> CProcess {
+pub unsafe extern "C" fn open_syscall_mem(p_proc: CProcessInfo) -> CMemory {
     throw_if_null(p_proc);
     let proc_info: &ProcessInfo = deref(p_proc);
-    if let Ok(m) = StreamMem::new(proc_info.pid) {
-        let proc = proc_info.clone().attach(m);
-        return Box::into_raw(Box::new(proc)) as CProcess;
+    if let Ok(m) = SysMem::new(proc_info.pid) {
+        return Box::into_raw(Box::new(m)) as CMemory;
     }
     ptr::null_mut()
 }
@@ -140,56 +139,52 @@ pub unsafe extern "C" fn library_info_size(p_lib: CLibraryInfo) -> usize {
 }
 
 /**
- * Process
+ * Memory
  */
 
-#[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_write_buffer_vfile(proc: CProcess, buf: *const u8, size: usize, addr: usize) {
-    throw_if_null(proc);
-    let proc: &Process<StreamMem> = deref(proc);
-    proc.memory.write_buffer(unsafe { std::slice::from_raw_parts(buf, size) }, addr);
+pub unsafe extern "C" fn memory_write_buffer(mem: CMemory, buf: *const u8, size: usize, addr: usize) {
+    throw_if_null(mem);
+    let mem: &SysMem = deref(mem);
+    mem.write_buffer(unsafe { std::slice::from_raw_parts(buf, size) }, addr);
 }
 
-#[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_read_buffer_vfile(proc: CProcess, buf: *mut u8, size: usize, addr: usize) {
-    throw_if_null(proc);
-    let proc: &Process<StreamMem> = deref(proc);
-    proc.memory.read_buffer(unsafe { std::slice::from_raw_parts_mut(buf, size) }, addr);
+pub unsafe extern "C" fn memory_read_buffer(mem: CMemory, buf: *mut u8, size: usize, addr: usize) {
+    throw_if_null(mem);
+    let mem: &SysMem = deref(mem);
+    mem.read_buffer(unsafe { std::slice::from_raw_parts_mut(buf, size) }, addr);
 }
 
-#[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_read_string_vfile(proc: CProcess, max_len: usize, addr: usize) -> *const c_char {
-    throw_if_null(proc);
-    let proc: &Process<StreamMem> = deref(proc);
-    let s = proc.memory.read_string(addr, max_len);
+pub unsafe extern "C" fn memory_read_string(mem: CMemory, max_len: usize, addr: usize) -> *const c_char {
+    throw_if_null(mem);
+    let mem: &SysMem = deref(mem);
+    let s = mem.read_string(addr, max_len);
     CString::new(s.chars().filter(|&c| c != '\0').collect::<String>()).unwrap().into_raw()
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_write_buffer(proc: CProcess, buf: *const u8, size: usize, addr: usize) {
-    throw_if_null(proc);
-    let proc: &Process<SysMem> = deref(proc);
-    proc.memory.write_buffer(unsafe { std::slice::from_raw_parts(buf, size) }, addr);
+pub unsafe extern "C" fn memory_write_buffer_vfile(mem: CMemory, buf: *const u8, size: usize, addr: usize) {
+    throw_if_null(mem);
+    let mem: &StreamMem = deref(mem);
+    mem.write_buffer(unsafe { std::slice::from_raw_parts(buf, size) }, addr);
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_read_buffer(proc: CProcess, buf: *mut u8, size: usize, addr: usize) {
-    throw_if_null(proc);
-    let proc: &Process<SysMem> = deref(proc);
-    proc.memory.read_buffer(unsafe { std::slice::from_raw_parts_mut(buf, size) }, addr);
+pub unsafe extern "C" fn memory_read_buffer_vfile(mem: CMemory, buf: *mut u8, size: usize, addr: usize) {
+    throw_if_null(mem);
+    let mem: &StreamMem = deref(mem);
+    mem.read_buffer(unsafe { std::slice::from_raw_parts_mut(buf, size) }, addr);
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_read_string(proc: CProcess, max_len: usize, addr: usize) -> *const c_char {
-    throw_if_null(proc);
-    let proc: &Process<SysMem> = deref(proc);
-    let s = proc.memory.read_string(addr, max_len);
+pub unsafe extern "C" fn memory_read_string_vfile(mem: CMemory, max_len: usize, addr: usize) -> *const c_char {
+    throw_if_null(mem);
+    let mem: &StreamMem = deref(mem);
+    let s = mem.read_string(addr, max_len);
     CString::new(s.chars().filter(|&c| c != '\0').collect::<String>()).unwrap().into_raw()
 }
-
 /**
  * free
  */
@@ -218,26 +213,28 @@ pub unsafe extern "C" fn free_library_info_list(p_lib: CLibraryInfo, len: c_int)
 
 #[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn free_process_vfile(proc: CProcess) {
+pub unsafe extern "C" fn free_memory_obj(proc: CMemory) {
     if proc.is_null() {
         return;
     }
     unsafe {
-        let proc: Box<Process<StreamMem>> = Box::from_raw(proc as *mut Process<_>);
+        let proc: Box<SysMem> = Box::from_raw(proc as *mut SysMem);
         drop(proc);
     }
 }
 
+#[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn free_process(proc: CProcess) {
+pub unsafe extern "C" fn free_memory_obj_vfile(proc: CMemory) {
     if proc.is_null() {
         return;
     }
     unsafe {
-        let proc: Box<Process<SysMem>> = Box::from_raw(proc as *mut Process<_>);
+        let proc: Box<StreamMem> = Box::from_raw(proc as *mut StreamMem);
         drop(proc);
     }
 }
+
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn free_cstring(s: *const c_char) {

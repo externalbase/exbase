@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use exbase::{MemoryAccessor, Process, ProcessInfo, SysMem};
+use exbase::{MemoryAccessor, ProcessInfo, SysMem};
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -37,10 +37,10 @@ pub fn main() {
     print_libraries(&proc_info);
     
     let pid = proc_info.pid();
-    let proc = proc_info.attach(SysMem::new(pid).unwrap());
+    let mem = SysMem::new(pid).unwrap();
 
-    read_write_field(&proc);
-    read_write_struct(&proc);
+    read_write_field(&mem);
+    read_write_struct(&mem);
 }
 
 fn print_process_info(proc_info: &ProcessInfo) {
@@ -64,20 +64,20 @@ fn print_libraries(proc_info: &ProcessInfo) {
     }
 }
 
-fn read_write_field(proc: &Process<SysMem>) {
+fn read_write_field(mem: &impl MemoryAccessor) {
     let addr: usize = *HEAP_ADDR.lock().unwrap() + 0x2a0;
-    let num2 = proc.memory.read::<i32>(addr + 0x18) * -1;
-    proc.memory.write::<i32>(addr + 0x18, num2);
+    let num2 = mem.read::<i32>(addr + 0x18) * -1;
+    mem.write::<i32>(addr + 0x18, num2);
 }
 
-fn read_write_struct(proc: &Process<SysMem>) {
+fn read_write_struct(mem: &impl MemoryAccessor) {
     let addr: usize = *HEAP_ADDR.lock().unwrap() + 0x2a0;
-    let mut my_struct: MyStruct = proc.memory.read(addr);
+    let mut my_struct: MyStruct = mem.read(addr);
     my_struct.num += 3;
     my_struct.num3 = my_struct.num3.wrapping_mul(2);
-    proc.memory.write(addr, my_struct);
+    mem.write(addr, my_struct);
 
-    let short_text = proc.memory.read_string(my_struct.short_text, 256);
+    let short_text = mem.read_string(my_struct.short_text, 256);
     println!("short_text: {}, text len: {}", short_text, short_text.len());
-    proc.memory.write_buffer(b":p\0", my_struct.long_text);
+    mem.write_buffer(b":p\0", my_struct.long_text);
 }

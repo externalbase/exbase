@@ -1,14 +1,8 @@
 use std::{fs::{self, File}, io::{BufRead, BufReader}, path::Path};
 
-use crate::{bindings, LibraryInfo, MemoryAccessor, Process, ProcessInfo, error::{Result, Error}};
+use crate::{bindings, LibraryInfo, ProcessInfo, error::{Result, Error}};
 
 impl ProcessInfo {
-    pub fn attach<M: MemoryAccessor>(self, memory: M) -> Process<M> {
-        Process {
-            info: self,
-            memory,
-        }
-    }
     pub(crate) fn from_pid(pid: u32) -> Result<Self> {
         if !bindings::is_alive(pid as i32) {
             return Err(Error::other("Process is inactive"));

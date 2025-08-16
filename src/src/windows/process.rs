@@ -2,13 +2,6 @@ use crate::error::{Error, Result};
 use crate::{bindings::*, LibraryInfo, MemoryAccessor, Process, ProcessInfo};
 
 impl ProcessInfo {
-    pub fn attach<M: MemoryAccessor>(self, memory: M) -> Process<M> {
-        Process {
-            info: self,
-            memory,
-        }
-    }
-
     pub fn new(pid: u32, name: String) -> Result<Self> {
         let handle = unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, pid) };
         if handle <= 0 as _ {

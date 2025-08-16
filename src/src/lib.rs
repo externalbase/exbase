@@ -52,10 +52,6 @@ pub trait MemoryAccessor {
         self.write_buffer(&mut buf, addr);
     }
 }
-pub struct Process<M: MemoryAccessor> {
-    pub(crate) info: ProcessInfo,
-    pub memory: M,
-}
 
 pub struct SysMem {
     pid: i32,
@@ -117,12 +113,6 @@ impl LibraryInfo {
 
     pub fn can_write(&self) -> bool {
         &self.perms[1..2] == "w"
-    }
-}
-
-impl<M: MemoryAccessor> Process<M> {
-    pub fn get_info(&self) -> ProcessInfo {
-        self.info.clone()
     }
 }
 

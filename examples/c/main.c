@@ -1,7 +1,7 @@
 #include<stdio.h>
 #include<stddef.h>
 #include<string.h>
-#include"exbase.h" // ${workspaceFolder}/../../src/exbase.h
+#include"exbase.h"
 
 typedef struct {
     int             num;
@@ -14,8 +14,8 @@ typedef struct {
 
 void print_process_info(ProcessInfo proc);
 void print_libraries(LibraryInfo lib);
-void read_write_field(Process proc);
-void read_write_struct(Process proc);
+void read_write_field(Memory mem);
+void read_write_struct(Memory mem);
 
 uintptr_t HEAP_ADDR = 0;
 
@@ -41,17 +41,17 @@ int main(int argc, char** argv) {
     print_process_info(proc_info);
     print_libraries(proc_info);
 
-    Process proc = process_info_attach(proc_info);
-    if (!proc) {
+    Memory mem = open_syscall_mem(proc_info);
+    if (!mem) {
         printf("failed\n");
         free_process_info_list(proc_info_list, out_len);
         return 1;
     }
-    // ProcessInfo клонирован в Process. Больше нет необходимости в proc_info_list
+
     free_process_info_list(proc_info_list, out_len);
 
-    read_write_field(proc);
-    read_write_struct(proc);
+    read_write_field(mem);
+    read_write_struct(mem);
 
     return 0;
 }
@@ -99,26 +99,26 @@ void print_libraries(ProcessInfo proc_info) {
     free_library_info_list(libraries, out_len);
 }
 
-void read_write_field(Process proc) {
+void read_write_field(Memory mem) {
     uintptr_t addr = HEAP_ADDR + 0x2a0;
     int num2;
-    process_read(proc, num2, addr + 0x18);
+    memory_read(mem, num2, addr + 0x18);
     num2 *= -1;
-    process_write(proc, num2, addr + 0x18);
+    memory_write(mem, num2, addr + 0x18);
 }
 
-void read_write_struct(Process proc) {
+void read_write_struct(Memory mem) {
     uintptr_t addr = HEAP_ADDR + 0x2a0;
     MyStruct my_struct;
-    process_read(proc, my_struct, addr);
+    memory_read(mem, my_struct, addr);
     my_struct.num += 3;
     my_struct.num3 *= 2;
-    process_write(proc, my_struct, addr);
+    memory_write(mem, my_struct, addr);
 
-    const char* short_text = process_read_string(proc, 256, my_struct.short_text);
+    const char* short_text = memory_read_string(mem, 256, my_struct.short_text);
     printf("short_text: %s, text len: %ld\n", short_text, strlen(short_text));
     free_cstring(short_text);
 
     char new_text[] = ":p";
-    process_write_buffer(proc, (const unsigned char*)new_text, sizeof(new_text), my_struct.long_text);
+    memory_write_buffer(mem, (const unsigned char*)new_text, sizeof(new_text), my_struct.long_text);
 }
