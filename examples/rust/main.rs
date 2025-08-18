@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use exbase::{MemoryAccessor, ProcessInfo, SysMem};
+use exbase::{relative_address, MemoryAccessor, Pattern, ProcessInfo, SysMem};
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -12,8 +12,8 @@ pub struct MyStruct {
     pub _padding: [u8; 16],
     pub num3: i8,
 }
-
-static HEAP_ADDR: Mutex<usize> = Mutex::new(0);
+static SCAN_RANGE_START: Mutex<usize> = Mutex::new(0usize);
+static SCAN_RANGE_SIZE: Mutex<usize> = Mutex::new(0usize);
 
 pub fn main() {
     let proc_info_list = exbase::get_process_info_list("ABC123").expect("Failed to get processes");
@@ -35,12 +35,29 @@ pub fn main() {
 
     print_process_info(&proc_info);
     print_libraries(&proc_info);
-    
-    let pid = proc_info.pid();
-    let mem = SysMem::new(pid).unwrap();
 
-    read_write_field(&mem);
-    read_write_struct(&mem);
+    let mem = SysMem::new(proc_info.pid()).unwrap();
+
+    // mov    rax,QWORD PTR [rip+0x2a51]        # 0x403040 <my_struct_ptr>
+    // mov    eax,DWORD PTR [rax]
+    // mov    rdx,QWORD PTR [rbp-0x8]
+    let pat = Pattern::new("48 8b 05 ? ? ? ? 8b ?").unwrap();
+
+    // 00400000-00401000 r-xp 00000000 00:23 1730705                            /path/to/ABC123
+    // ...
+    // 00403000-00404000 rw-p 00002000 00:23 1730705                            /path/to/ABC123
+    let scan_start = SCAN_RANGE_START.lock().unwrap();
+
+    let mut buf = vec!(0u8; *SCAN_RANGE_SIZE.lock().unwrap());
+
+    mem.read_buffer(&mut buf, *scan_start);
+    
+    let pattern_offset = pat.scan(&buf, false).into_iter().next().expect("not found");
+    
+    let my_struct_ptr = relative_address(&mem, *scan_start + pattern_offset, 3, 7);
+
+    read_write_field(&mem, my_struct_ptr);
+    read_write_struct(&mem, my_struct_ptr);
 }
 
 fn print_process_info(proc_info: &ProcessInfo) {
@@ -57,21 +74,21 @@ fn print_libraries(proc_info: &ProcessInfo) {
         println!("Address: 0x{:x}", lib.address());
         println!("Size: {} bytes\n", lib.size());
 
-        if lib.name() == "[heap]" {
-            let mut addr = HEAP_ADDR.lock().unwrap();
-            *addr = lib.address();
+        if lib.name() == "ABC123" {
+            *SCAN_RANGE_START.lock().unwrap() = lib.address();
+            *SCAN_RANGE_SIZE.lock().unwrap() = lib.size();
         }
     }
 }
 
-fn read_write_field(mem: &impl MemoryAccessor) {
-    let addr: usize = *HEAP_ADDR.lock().unwrap() + 0x2a0;
+fn read_write_field(mem: &impl MemoryAccessor, my_struct_ptr: usize) {
+    let addr = mem.read::<usize>(my_struct_ptr);
     let num2 = mem.read::<i32>(addr + 0x18) * -1;
     mem.write::<i32>(addr + 0x18, num2);
 }
 
-fn read_write_struct(mem: &impl MemoryAccessor) {
-    let addr: usize = *HEAP_ADDR.lock().unwrap() + 0x2a0;
+fn read_write_struct(mem: &impl MemoryAccessor, my_struct_ptr: usize) {
+    let addr = mem.read::<usize>(my_struct_ptr);
     let mut my_struct: MyStruct = mem.read(addr);
     my_struct.num += 3;
     my_struct.num3 = my_struct.num3.wrapping_mul(2);

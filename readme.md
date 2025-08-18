@@ -1,7 +1,7 @@
 
 todo:
     LibraryInfo.path (binary file)
-    cmd (windows)
+    Не сканировать весь модуль
 
 может быть:
     использовать windows-link вместо windows-sys

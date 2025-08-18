@@ -15,7 +15,6 @@ mod tests;
 #[cfg(feature = "ffi")]
 mod ff_interface;
 pub mod error;
-pub mod patern_scanner;
 
 use error::Result;
 use std::{fs::File};
@@ -80,6 +79,12 @@ pub struct LibraryInfo {
     perms: String,
 }
 
+pub struct Pattern {
+    pub bytes: Vec<u8>,
+    pub mask: Vec<u8>,
+}
+
+
 impl ProcessInfo {
     pub fn pid(&self) -> u32 {
         self.pid
@@ -114,6 +119,110 @@ impl LibraryInfo {
     pub fn can_write(&self) -> bool {
         &self.perms[1..2] == "w"
     }
+}
+
+impl Pattern {
+    /// # Example
+    /// ```
+    /// Pattern::new("00 FF 0? F? ?? ?").unwrap();
+    /// ```
+    pub fn new(pattern: &str) -> Option<Self> {
+        let mut result = Pattern { bytes: Vec::new(), mask: Vec::new() };
+        let mut first_solid_found = false;
+        if pattern.trim().is_empty() {
+            return  None;
+        }
+        for strb in pattern.split_whitespace() {
+            if strb.len() > 2 {
+                return None;
+            }
+            let any_wild = strb.contains('?');
+            let full_wild = strb == "??" || (any_wild && strb.len() == 1);
+
+            if !first_solid_found && !full_wild {
+                first_solid_found = true;
+            }
+            if full_wild {
+                result.bytes.push(0x00);
+                result.mask.push(0x00);
+                continue;
+            }
+
+            if !any_wild {
+                let byte = u8::from_str_radix(strb, 16).ok()?;
+                result.bytes.push(byte);
+                result.mask.push(0xFF);
+                continue;
+            }
+
+            let mut chars: Vec<char> = strb.chars().collect();
+            if chars[0] == '?' {
+                chars[0] = '0';
+                let hex = chars.iter().collect::<String>();
+                let byte = u8::from_str_radix(&hex, 16).ok()?;
+                result.bytes.push(byte);
+                result.mask.push(0x0F);
+            } else {
+                chars[1] = '0';
+                let hex = chars.iter().collect::<String>();
+                let byte = u8::from_str_radix(&hex, 16).ok()?;
+                result.bytes.push(byte);
+                result.mask.push(0xF0);
+            }
+        }
+
+        Some(result)
+    }
+
+    fn build_shift_table(&self) -> [usize; 256] {
+        let m = self.bytes.len();
+        let mut shift = [m; 256];
+        for i in 0..m-1 {
+            let b = self.bytes[i] & self.mask[i];
+            shift[b as usize] = m - 1 - i;
+        }
+        shift
+    }
+
+    pub fn scan(&self, buf: &[u8], first_only: bool) -> Vec<usize> {
+        let m = self.bytes.len();
+        let n = buf.len();
+        if m == 0 || n < m { return Vec::new(); }
+
+        let shift = self.build_shift_table();
+        let mut result = Vec::new();
+        let mut pos = 0;
+
+        while pos <= n - m {
+            let last_buf = buf[pos + m - 1] & self.mask[m - 1];
+            let last_pat = self.bytes[m - 1] & self.mask[m - 1];
+            if last_buf == last_pat {
+                let mut matched = true;
+                for i in 0..m-1 {
+                    if (buf[pos+i] & self.mask[i]) != (self.bytes[i] & self.mask[i]) {
+                        matched = false;
+                        break;
+                    }
+                }
+                if matched {
+                    result.push(pos);
+                    if first_only {
+                        return result;
+                    }
+                }
+                pos += 1;
+            } else {
+                pos += shift[last_buf as usize];
+            }
+        }
+        result
+    }
+}
+
+pub fn relative_address(mem: &impl MemoryAccessor, pattern_addr: usize, offset: usize, inst_length: usize) -> usize 
+{
+    let rip_rel = mem.read::<i32>(pattern_addr + offset);
+    pattern_addr.wrapping_add(inst_length).wrapping_add(rip_rel as usize)
 }
 
 #[cfg(target_os = "linux")]

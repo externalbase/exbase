@@ -8,6 +8,7 @@ typedef void* ProcessInfo;
 typedef void* LibraryInfo;
 typedef void* Memory;
 typedef void* MemoryVFile;
+typedef void* Pattern;
 
 /**
  * ProcessInfo
@@ -58,6 +59,14 @@ void memory_read_buffer(Memory mem, unsigned char* buf, size_t size, uintptr_t a
 void memory_write_buffer(Memory proc, const unsigned char* buf, size_t size, uintptr_t addr);
 const char* memory_read_string(Memory proc, size_t max_len, uintptr_t addr);
 void free_memory_obj(Memory mem);
+
+/**
+ * pattern
+ */
+Pattern pattern_new(const char* pattern);
+uintptr_t* pattern_scan(Pattern pattern, unsigned char* buf, size_t size, int first_only, int* out_len);
+void free_pattern_offsets(uintptr_t*, size_t len);
+void free_pattern(Pattern pattern);
 
 /**
  * free

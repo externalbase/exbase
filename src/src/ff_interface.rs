@@ -1,6 +1,6 @@
 use std::{ffi::{c_char, c_int, c_uint, c_void, CString}, mem, ptr};
 
-use crate::{LibraryInfo, MemoryAccessor, ProcessInfo, SysMem};
+use crate::{LibraryInfo, MemoryAccessor, Pattern, ProcessInfo, SysMem};
 #[cfg(target_os = "linux")]
 use crate::StreamMem;
 use ffi_utils::*;
@@ -8,6 +8,7 @@ use ffi_utils::*;
 pub type CProcessInfo = *mut c_void;
 pub type CLibraryInfo = *mut c_void;
 pub type CMemory = *mut c_void;
+pub type CPattern = *mut c_void;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn get_process_info_list(name: *const c_char, out_len: *mut c_int) -> CProcessInfo {
@@ -185,9 +186,58 @@ pub unsafe extern "C" fn memory_read_string_vfile(mem: CMemory, max_len: usize, 
     let s = mem.read_string(addr, max_len);
     CString::new(s.chars().filter(|&c| c != '\0').collect::<String>()).unwrap().into_raw()
 }
+
+/**
+ * Pattern
+ */
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn pattern_new(pattern: *const c_char) -> CPattern {
+    if let Ok(name) = rstr(pattern) {
+        if let Some(pattern) = Pattern::new(name) {
+            return Box::into_raw(Box::new(pattern)) as CPattern;
+        }
+    }
+    ptr::null_mut()
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn pattern_scan(pattern: CPattern, buf: *mut u8, size: usize, first_only: c_int, out_len: *mut c_int) -> *mut usize {
+    throw_if_null(pattern);
+    let pattern: &Pattern = deref(pattern);
+    let first_only: bool = if first_only != 0 { true } else { false };
+    let mut offsets = pattern.scan(unsafe { std::slice::from_raw_parts(buf, size) }, first_only);
+    if offsets.len() > 0 {
+        offsets.shrink_to_fit();
+        let ptr = offsets.as_mut_ptr() as *mut usize;
+        unsafe { *out_len = offsets.len() as i32 }
+        mem::forget(offsets);
+        return ptr;
+    }
+    unsafe { *out_len = 0 };
+    ptr::null_mut() as *mut usize
+}
+
 /**
  * free
  */
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn free_pattern_offsets(offsets: *mut usize, len: c_int) {
+    let ulen = len as usize;
+    _ = unsafe { Vec::from_raw_parts(offsets as *mut usize, ulen, ulen) };
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn free_pattern(pattern: CPattern) {
+    if pattern.is_null() {
+        return;
+    }
+    unsafe {
+        let proc: Box<Pattern> = Box::from_raw(pattern as *mut Pattern);
+        drop(proc);
+    }
+}
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn free_process_info_list(p_proc: CProcessInfo, len: c_int) {

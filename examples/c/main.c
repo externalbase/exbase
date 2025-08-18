@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stddef.h>
 #include<string.h>
+#include<stdlib.h>
 #include"exbase.h"
 
 typedef struct {
@@ -12,12 +13,15 @@ typedef struct {
     int8_t          num3;
 } MyStruct;
 
+uintptr_t relative_address(Memory mem, uintptr_t pattern_addr, size_t offset, size_t inst_lenght);
+
 void print_process_info(ProcessInfo proc);
 void print_libraries(LibraryInfo lib);
-void read_write_field(Memory mem);
-void read_write_struct(Memory mem);
+void read_write_field(Memory mem, uintptr_t my_struct_ptr);
+void read_write_struct(Memory mem, uintptr_t my_struct_ptr);
 
-uintptr_t HEAP_ADDR = 0;
+uintptr_t SCAN_RANGE_START = 0;
+uintptr_t SCAN_RANGE_SIZE = 0;
 
 int main(int argc, char** argv) {
     int out_len = 0;
@@ -48,10 +52,37 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    Pattern pat = pattern_new("48 8b 05 ? ? ? ? 8b ?");
+    if (!pat) {
+        printf("Failed to parse\n");
+        return 1;
+    }
+    unsigned char* buf = malloc(SCAN_RANGE_SIZE);
+
+    memory_read_buffer(mem, buf, SCAN_RANGE_SIZE, SCAN_RANGE_START);
+
+    int out_results_len = 0;
+    uintptr_t* pat_offsets = pattern_scan(pat, buf, SCAN_RANGE_SIZE, 0, &out_results_len);
+    if (!pat_offsets) {
+        printf("Failed\n");
+        return 1;
+    }
+    uintptr_t pat_offset = *pat_offsets;
+
+    for (int i = 0; i < out_results_len; ++i) {
+        uintptr_t pat_ofst = *(pat_offsets + i);
+        printf("pat offset: %p\n", (void*)pat_ofst);
+    }
+
+    uintptr_t my_struct_ptr = relative_address(mem, SCAN_RANGE_START + pat_offset, 3, 7);
+
+    free_pattern(pat);
+    free_pattern_offsets(pat_offsets, out_results_len);
+
     free_process_info_list(proc_info_list, out_len);
 
-    read_write_field(mem);
-    read_write_struct(mem);
+    read_write_field(mem, my_struct_ptr);
+    read_write_struct(mem, my_struct_ptr);
 
     return 0;
 }
@@ -88,8 +119,9 @@ void print_libraries(ProcessInfo proc_info) {
         printf("Address: %p\n", (void*)address);
         printf("Size: %ld (bytes)\n\n", size);
 
-        if (strcmp("[heap]", name) == 0) {
-            HEAP_ADDR = address;
+        if (strcmp("ABC123", name) == 0) {
+            SCAN_RANGE_START = address;
+            SCAN_RANGE_SIZE = size;
         }
 
         free_cstring(name);
@@ -99,16 +131,18 @@ void print_libraries(ProcessInfo proc_info) {
     free_library_info_list(libraries, out_len);
 }
 
-void read_write_field(Memory mem) {
-    uintptr_t addr = HEAP_ADDR + 0x2a0;
+void read_write_field(Memory mem, uintptr_t my_struct_ptr) {
+    uintptr_t addr = 0;
+    memory_read(mem, addr, my_struct_ptr);
     int num2;
     memory_read(mem, num2, addr + 0x18);
     num2 *= -1;
     memory_write(mem, num2, addr + 0x18);
 }
 
-void read_write_struct(Memory mem) {
-    uintptr_t addr = HEAP_ADDR + 0x2a0;
+void read_write_struct(Memory mem, uintptr_t my_struct_ptr) {
+    uintptr_t addr = 0;
+    memory_read(mem, addr, my_struct_ptr);
     MyStruct my_struct;
     memory_read(mem, my_struct, addr);
     my_struct.num += 3;
@@ -121,4 +155,10 @@ void read_write_struct(Memory mem) {
 
     char new_text[] = ":p";
     memory_write_buffer(mem, (const unsigned char*)new_text, sizeof(new_text), my_struct.long_text);
+}
+
+uintptr_t relative_address(Memory mem, uintptr_t pattern_addr, size_t offset, size_t inst_lenght) {
+    int rip_rel = 0;
+    memory_read(mem, rip_rel, pattern_addr + offset);
+    return pattern_addr + inst_lenght + rip_rel;
 }

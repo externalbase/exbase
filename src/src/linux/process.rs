@@ -22,7 +22,7 @@ impl ProcessInfo {
         let maps = File::open(format!("/proc/{}/maps", self.pid))?;
         for line in BufReader::new(maps).lines() {
             if let Ok(line) = line {
-                if let Some(segment) = parse_segment(line.trim_end().to_owned()) {
+                if let Some(segment) = parse_segment(line.trim_end().to_owned(), &self.exe) {
                     result.push(segment);
                 }
             }
@@ -31,7 +31,7 @@ impl ProcessInfo {
     }
 }
 
-fn parse_segment(line: String) -> Option<LibraryInfo> {
+fn parse_segment(line: String, owner_name: &str) -> Option<LibraryInfo> {
     let parts: Vec<&str> = line.splitn(6, ' ').collect();
     if parts.len() == 6 {
         let mut iterator = parts.iter();
@@ -42,19 +42,23 @@ fn parse_segment(line: String) -> Option<LibraryInfo> {
             _ = iterator.next()?;                   // dev number
             _ = iterator.next()?;                   // inode
             let path = iterator.next()?.trim();
-            if path == "[heap]" || path == "[stack]" || (path.starts_with('/') && path.contains(".so")) {
+            if (path.starts_with('/') && path.contains(".so")) || path == "[heap]" || path == "[stack]" || path == owner_name {
                 let name = Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(path);
                 let addr_range: Vec<_> = addr_range.split('-').collect();
                 let start = usize::from_str_radix(addr_range.get(0)?, 16).ok()?;
-                let end = usize::from_str_radix(addr_range.get(1)?, 16).ok()?;
+                let size = get_file_size(path).ok()?;
                 return  Some(LibraryInfo {
                     name: name.to_owned(),
                     address: start,
-                    size: end - start,
+                    size: size,
                     perms: perms.to_string()
                 });
             }
         }
     }
     None
+}
+
+fn get_file_size(path: &str) -> std::io::Result<usize> {
+    Ok(fs::metadata(path)?.len() as usize)
 }
