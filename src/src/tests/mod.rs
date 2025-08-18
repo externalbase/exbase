@@ -14,7 +14,7 @@ fn test1() {
         .next()
         .unwrap();
 
-    proc_info.get_libraries()
+    proc_info.get_modules()
         .unwrap()
         .into_iter()
         .next()

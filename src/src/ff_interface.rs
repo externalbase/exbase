@@ -1,12 +1,12 @@
 use std::{ffi::{c_char, c_int, c_uint, c_void, CString}, mem, ptr};
 
-use crate::{LibraryInfo, MemoryAccessor, Pattern, ProcessInfo, SysMem};
+use crate::{ModuleInfo, MemoryAccessor, Pattern, ProcessInfo, SysMem};
 #[cfg(target_os = "linux")]
 use crate::StreamMem;
 use ffi_utils::*;
 
 pub type CProcessInfo = *mut c_void;
-pub type CLibraryInfo = *mut c_void;
+pub type CModuleInfo = *mut c_void;
 pub type CMemory = *mut c_void;
 pub type CPattern = *mut c_void;
 
@@ -33,10 +33,10 @@ pub unsafe extern "C" fn get_process_info_list(name: *const c_char, out_len: *mu
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn process_info_get_libraries(p_proc: CProcessInfo, out_len: *mut c_int) -> CLibraryInfo {
+pub unsafe extern "C" fn process_info_get_modules(p_proc: CProcessInfo, out_len: *mut c_int) -> CModuleInfo {
     throw_if_null(p_proc);
     let proc: &ProcessInfo = deref(p_proc);
-    if let Ok(vec_r) = proc.get_libraries() {
+    if let Ok(vec_r) = proc.get_modules() {
         if vec_r.len() > 0 {
             let mut vec_c = Vec::new();
             for lib in vec_r {
@@ -44,7 +44,7 @@ pub unsafe extern "C" fn process_info_get_libraries(p_proc: CProcessInfo, out_le
                 vec_c.push(p_lib);
             }
             vec_c.shrink_to_fit();
-            let ptr = vec_c.as_mut_ptr() as CLibraryInfo;
+            let ptr = vec_c.as_mut_ptr() as CModuleInfo;
             unsafe { *out_len = vec_c.len() as c_int };
             mem::forget(vec_c);
             return ptr;
@@ -108,34 +108,34 @@ pub unsafe extern "C" fn open_syscall_mem(p_proc: CProcessInfo) -> CMemory {
 }
 
 /**
- * LibraryInfo
+ * ModuleInfo
  */
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn library_info_name(p_lib: CLibraryInfo) -> *const c_char {
+pub unsafe extern "C" fn module_info_name(p_lib: CModuleInfo) -> *const c_char {
     throw_if_null(p_lib);
-    let lib: &LibraryInfo = deref(p_lib);
+    let lib: &ModuleInfo = deref(p_lib);
     CString::new(lib.name.clone()).unwrap().into_raw()
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn library_info_perms(p_lib: CLibraryInfo) -> *const c_char {
+pub unsafe extern "C" fn module_info_perms(p_lib: CModuleInfo) -> *const c_char {
     throw_if_null(p_lib);
-    let lib: &LibraryInfo = deref(p_lib);
+    let lib: &ModuleInfo = deref(p_lib);
     CString::new(lib.perms.clone()).unwrap().into_raw()
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn library_info_address(p_lib: CLibraryInfo) -> usize {
+pub unsafe extern "C" fn module_info_address(p_lib: CModuleInfo) -> usize {
     throw_if_null(p_lib);
-    let lib: &LibraryInfo = deref(p_lib);
+    let lib: &ModuleInfo = deref(p_lib);
     lib.address
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn library_info_size(p_lib: CLibraryInfo) -> usize {
+pub unsafe extern "C" fn module_info_size(p_lib: CModuleInfo) -> usize {
     throw_if_null(p_lib);
-    let lib: &LibraryInfo = deref(p_lib);
+    let lib: &ModuleInfo = deref(p_lib);
     lib.size
 }
 
@@ -251,12 +251,12 @@ pub unsafe extern "C" fn free_process_info_list(p_proc: CProcessInfo, len: c_int
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn free_library_info_list(p_lib: CLibraryInfo, len: c_int) {
+pub unsafe extern "C" fn free_module_info_list(p_lib: CModuleInfo, len: c_int) {
     let ulen = len as usize;
-    let vec_c = unsafe { Vec::from_raw_parts(p_lib as *mut CLibraryInfo, ulen, ulen) };
+    let vec_c = unsafe { Vec::from_raw_parts(p_lib as *mut CModuleInfo, ulen, ulen) };
     unsafe {
         for p in vec_c {
-            drop(Box::from_raw(p as *mut LibraryInfo));
+            drop(Box::from_raw(p as *mut ModuleInfo));
         }
     }
 }

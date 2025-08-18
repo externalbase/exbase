@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::{bindings::*, LibraryInfo, MemoryAccessor, Process, ProcessInfo};
+use crate::{bindings::*, ModuleInfo, MemoryAccessor, Process, ProcessInfo};
 
 impl ProcessInfo {
     pub fn new(pid: u32, name: String) -> Result<Self> {
@@ -19,7 +19,7 @@ impl ProcessInfo {
         })
     }
 
-    pub fn get_libraries(&self) -> Result<Vec<LibraryInfo>> {
+    pub fn get_libraries(&self) -> Result<Vec<ModuleInfo>> {
         if self.handle <= 0 as _ {
             return  Err(Error::os("Process handle is null"));
         }
@@ -61,7 +61,7 @@ impl ProcessInfo {
             }
 
             result.push(
-                LibraryInfo {
+                ModuleInfo {
                     bin: module_name,
                     address: mod_info.lpBaseOfDll as usize,
                     size: mod_info.SizeOfImage as usize,

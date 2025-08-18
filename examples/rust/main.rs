@@ -34,7 +34,7 @@ pub fn main() {
     let proc_info = proc_info_list.into_iter().next().unwrap();
 
     print_process_info(&proc_info);
-    print_libraries(&proc_info);
+    print_modules(&proc_info);
 
     let mem = SysMem::new(proc_info.pid()).unwrap();
 
@@ -66,17 +66,17 @@ fn print_process_info(proc_info: &ProcessInfo) {
     println!("Executable: {}\n", proc_info.exe());
 }
 
-fn print_libraries(proc_info: &ProcessInfo) {
-    let libraries = proc_info.get_libraries().expect("Не удалось получить библиотеки");
+fn print_modules(proc_info: &ProcessInfo) {
+    let modules = proc_info.get_modules().expect("Не удалось получить библиотеки");
 
-    for lib in libraries {
-        println!("Name: {}", lib.name());
-        println!("Address: 0x{:x}", lib.address());
-        println!("Size: {} bytes\n", lib.size());
+    for r#mod in modules {
+        println!("Name: {}", r#mod.name());
+        println!("Address: 0x{:x}", r#mod.address());
+        println!("Size: {} bytes\n", r#mod.size());
 
-        if lib.name() == "ABC123" {
-            *SCAN_RANGE_START.lock().unwrap() = lib.address();
-            *SCAN_RANGE_SIZE.lock().unwrap() = lib.size();
+        if r#mod.name() == "ABC123" {
+            *SCAN_RANGE_START.lock().unwrap() = r#mod.address();
+            *SCAN_RANGE_SIZE.lock().unwrap() = r#mod.size();
         }
     }
 }

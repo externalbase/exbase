@@ -16,7 +16,7 @@ typedef struct {
 uintptr_t relative_address(Memory mem, uintptr_t pattern_addr, size_t offset, size_t inst_lenght);
 
 void print_process_info(ProcessInfo proc);
-void print_libraries(LibraryInfo lib);
+void print_modules(ModuleInfo mod);
 void read_write_field(Memory mem, uintptr_t my_struct_ptr);
 void read_write_struct(Memory mem, uintptr_t my_struct_ptr);
 
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
     ProcessInfo proc_info = *proc_info_list;
 
     print_process_info(proc_info);
-    print_libraries(proc_info);
+    print_modules(proc_info);
 
     Memory mem = open_syscall_mem(proc_info);
     if (!mem) {
@@ -68,11 +68,6 @@ int main(int argc, char** argv) {
         return 1;
     }
     uintptr_t pat_offset = *pat_offsets;
-
-    for (int i = 0; i < out_results_len; ++i) {
-        uintptr_t pat_ofst = *(pat_offsets + i);
-        printf("pat offset: %p\n", (void*)pat_ofst);
-    }
 
     uintptr_t my_struct_ptr = relative_address(mem, SCAN_RANGE_START + pat_offset, 3, 7);
 
@@ -100,20 +95,20 @@ void print_process_info(ProcessInfo proc_info) {
     free_cstring(exe);
 }
 
-void print_libraries(ProcessInfo proc_info) {
+void print_modules(ProcessInfo proc_info) {
     int out_len = 0;
-    LibraryInfo* libraries = process_info_get_libraries(proc_info, &out_len);
-    if (!libraries) {
+    ModuleInfo* modules = process_info_get_modules(proc_info, &out_len);
+    if (!modules) {
         puts("не удалось получить библиотеки\n");
         return;
     }
     
     for (int i = 0; i < out_len; ++i) {
-        LibraryInfo lib = *(libraries + i);
-        const char* name = library_info_name(lib);
-        const char* perms = library_info_perms(lib);
-        uintptr_t address = library_info_address(lib);
-        size_t size = library_info_size(lib);
+        ModuleInfo mod = *(modules + i);
+        const char* name = module_info_name(mod);
+        const char* perms = module_info_perms(mod);
+        uintptr_t address = module_info_address(mod);
+        size_t size = module_info_size(mod);
 
         printf("Name: %s\n", name);
         printf("Address: %p\n", (void*)address);
@@ -128,7 +123,7 @@ void print_libraries(ProcessInfo proc_info) {
         free_cstring(perms);
     }
 
-    free_library_info_list(libraries, out_len);
+    free_module_info_list(modules, out_len);
 }
 
 void read_write_field(Memory mem, uintptr_t my_struct_ptr) {

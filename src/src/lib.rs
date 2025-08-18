@@ -72,7 +72,7 @@ pub struct ProcessInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct LibraryInfo {
+pub struct ModuleInfo {
     name: String,
     address: usize,
     size: usize,
@@ -99,7 +99,7 @@ impl ProcessInfo {
     }
 }
 
-impl LibraryInfo {
+impl ModuleInfo {
     pub fn name(&self) -> String {
         self.name.to_string()
     }

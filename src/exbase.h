@@ -5,7 +5,7 @@
 #include<stddef.h>
 
 typedef void* ProcessInfo;
-typedef void* LibraryInfo;
+typedef void* ModuleInfo;
 typedef void* Memory;
 typedef void* MemoryVFile;
 typedef void* Pattern;
@@ -22,15 +22,15 @@ void free_process_info_list(ProcessInfo processes, int len);
 void free_process_info(ProcessInfo proc_info);
 
 /**
- * LibraryInfo
+ * ModuleInfo
  */
 
-LibraryInfo process_info_get_libraries(ProcessInfo lib, int* out_len);
-const char* library_info_name(LibraryInfo lib);
-const char* library_info_perms(LibraryInfo lib);
-uintptr_t library_info_address(LibraryInfo lib);
-size_t library_info_size(LibraryInfo lib);
-void free_library_info_list(LibraryInfo libraries, int len);
+ModuleInfo process_info_get_modules(ProcessInfo mod, int* out_len);
+const char* module_info_name(ModuleInfo mod);
+const char* module_info_perms(ModuleInfo mod);
+uintptr_t module_info_address(ModuleInfo mod);
+size_t module_info_size(ModuleInfo mod);
+void free_module_info_list(ModuleInfo modules, int len);
 
 /*
  * Memory

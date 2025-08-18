@@ -1,6 +1,6 @@
 use std::{fs::{self, File}, io::{BufRead, BufReader}, path::Path};
 
-use crate::{bindings, LibraryInfo, ProcessInfo, error::{Result, Error}};
+use crate::{bindings, ModuleInfo as ModuleInfo, ProcessInfo, error::{Result, Error}};
 
 impl ProcessInfo {
     pub(crate) fn from_pid(pid: u32) -> Result<Self> {
@@ -14,7 +14,7 @@ impl ProcessInfo {
         })
     }
 
-    pub fn get_libraries(&self) -> Result<Vec<LibraryInfo>> {
+    pub fn get_modules(&self) -> Result<Vec<ModuleInfo>> {
         if !bindings::is_alive(self.pid as i32) {
             return Err(Error::other("Process is inactive"));
         }
@@ -31,7 +31,7 @@ impl ProcessInfo {
     }
 }
 
-fn parse_segment(line: String, owner_name: &str) -> Option<LibraryInfo> {
+fn parse_segment(line: String, owner_name: &str) -> Option<ModuleInfo> {
     let parts: Vec<&str> = line.splitn(6, ' ').collect();
     if parts.len() == 6 {
         let mut iterator = parts.iter();
@@ -47,7 +47,7 @@ fn parse_segment(line: String, owner_name: &str) -> Option<LibraryInfo> {
                 let addr_range: Vec<_> = addr_range.split('-').collect();
                 let start = usize::from_str_radix(addr_range.get(0)?, 16).ok()?;
                 let size = get_file_size(path).ok()?;
-                return  Some(LibraryInfo {
+                return  Some(ModuleInfo {
                     name: name.to_owned(),
                     address: start,
                     size: size,
