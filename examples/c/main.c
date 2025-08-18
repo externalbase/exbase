@@ -57,22 +57,22 @@ int main(int argc, char** argv) {
         printf("Failed to parse\n");
         return 1;
     }
-    unsigned char* buf = malloc(SCAN_RANGE_SIZE);
 
+    unsigned char* buf = malloc(SCAN_RANGE_SIZE);
     memory_read_buffer(mem, buf, SCAN_RANGE_SIZE, SCAN_RANGE_START);
 
     int out_results_len = 0;
-    uintptr_t* pat_offsets = pattern_scan(pat, buf, SCAN_RANGE_SIZE, 0, &out_results_len);
-    if (!pat_offsets) {
+    uintptr_t* pattern_offsets = pattern_scan(pat, buf, SCAN_RANGE_SIZE, 0, &out_results_len);
+    if (!pattern_offsets) {
         printf("Failed\n");
         return 1;
     }
-    uintptr_t pat_offset = *pat_offsets;
+    uintptr_t pat_offset = *pattern_offsets;
 
     uintptr_t my_struct_ptr = relative_address(mem, SCAN_RANGE_START + pat_offset, 3, 7);
 
     free_pattern(pat);
-    free_pattern_offsets(pat_offsets, out_results_len);
+    free_pattern_offsets(pattern_offsets, out_results_len);
 
     free_process_info_list(proc_info_list, out_len);
 

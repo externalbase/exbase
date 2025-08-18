@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use exbase::{relative_address, MemoryAccessor, Pattern, ProcessInfo, SysMem};
+use exbase::*;
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -12,19 +12,22 @@ pub struct MyStruct {
     pub _padding: [u8; 16],
     pub num3: i8,
 }
+
+// ABC123 module info:
 static SCAN_RANGE_START: Mutex<usize> = Mutex::new(0usize);
 static SCAN_RANGE_SIZE: Mutex<usize> = Mutex::new(0usize);
 
 pub fn main() {
-    let proc_info_list = exbase::get_process_info_list("ABC123").expect("Failed to get processes");
+    let proc_info_list = get_process_info_list("ABC123").unwrap();
     let out_len = proc_info_list.len();
 
     if out_len == 0 {
-        eprintln!("Не найдено ни одного процесса");
+        eprintln!("No processes found");
         std::process::exit(1);
     }
     if out_len > 1 {
-        eprintln!("Найдено {} процессов", out_len);
+        // We only need one process
+        eprintln!("Found {} processes", out_len);
         for i in 0..out_len {
             eprintln!("{}. PID: {}", i, proc_info_list[i].pid());
         }
@@ -38,18 +41,10 @@ pub fn main() {
 
     let mem = SysMem::new(proc_info.pid()).unwrap();
 
-    // mov    rax,QWORD PTR [rip+0x2a51]        # 0x403040 <my_struct_ptr>
-    // mov    eax,DWORD PTR [rax]
-    // mov    rdx,QWORD PTR [rbp-0x8]
     let pat = Pattern::new("48 8b 05 ? ? ? ? 8b ?").unwrap();
-
-    // 00400000-00401000 r-xp 00000000 00:23 1730705                            /path/to/ABC123
-    // ...
-    // 00403000-00404000 rw-p 00002000 00:23 1730705                            /path/to/ABC123
     let scan_start = SCAN_RANGE_START.lock().unwrap();
 
     let mut buf = vec!(0u8; *SCAN_RANGE_SIZE.lock().unwrap());
-
     mem.read_buffer(&mut buf, *scan_start);
     
     let pattern_offset = pat.scan(&buf, false).into_iter().next().expect("not found");
@@ -67,7 +62,7 @@ fn print_process_info(proc_info: &ProcessInfo) {
 }
 
 fn print_modules(proc_info: &ProcessInfo) {
-    let modules = proc_info.get_modules().expect("Не удалось получить библиотеки");
+    let modules = proc_info.get_modules().unwrap();
 
     for r#mod in modules {
         println!("Name: {}", r#mod.name());
