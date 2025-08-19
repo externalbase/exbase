@@ -17,8 +17,13 @@ pub struct MyStruct {
 static SCAN_RANGE_START: Mutex<usize> = Mutex::new(0usize);
 static SCAN_RANGE_SIZE: Mutex<usize> = Mutex::new(0usize);
 
+#[cfg(target_os="windows")]
+const PROCESS_NAME: &str = "ABC123.exe";
+#[cfg(target_os="linux")]
+const PROCESS_NAME: &str = "ABC123";
+
 pub fn main() {
-    let proc_info_list = get_process_info_list("ABC123").unwrap();
+    let proc_info_list = get_process_info_list(PROCESS_NAME).unwrap();
     let out_len = proc_info_list.len();
 
     if out_len == 0 {
@@ -69,7 +74,7 @@ fn print_modules(proc_info: &ProcessInfo) {
         println!("Address: 0x{:x}", r#mod.address());
         println!("Size: {} bytes\n", r#mod.size());
 
-        if r#mod.name() == "ABC123" {
+        if r#mod.name() == PROCESS_NAME {
             *SCAN_RANGE_START.lock().unwrap() = r#mod.address();
             *SCAN_RANGE_SIZE.lock().unwrap() = r#mod.size();
         }

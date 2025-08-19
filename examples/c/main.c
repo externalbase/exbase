@@ -23,9 +23,16 @@ void read_write_struct(Memory mem, uintptr_t my_struct_ptr);
 uintptr_t SCAN_RANGE_START = 0;
 uintptr_t SCAN_RANGE_SIZE = 0;
 
+const char PROCESS_NAME =
+#if defined(_WIN32) || defined(_WIN64)
+"ABC123.exe";
+#else
+"ABC123";
+#endif
+
 int main(int argc, char** argv) {
     int out_len = 0;
-    ProcessInfo* proc_info_list = get_process_info_list("ABC123", &out_len);
+    ProcessInfo* proc_info_list = get_process_info_list(PROCESS_NAME, &out_len);
 
     if (!proc_info_list) {
         puts("Не найдено ни одного процесса");
@@ -114,7 +121,7 @@ void print_modules(ProcessInfo proc_info) {
         printf("Address: %p\n", (void*)address);
         printf("Size: %ld (bytes)\n\n", size);
 
-        if (strcmp("ABC123", name) == 0) {
+        if (strcmp(PROCESS_NAME, name) == 0) {
             SCAN_RANGE_START = address;
             SCAN_RANGE_SIZE = size;
         }

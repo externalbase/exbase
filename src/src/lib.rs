@@ -17,7 +17,10 @@ mod ff_interface;
 pub mod error;
 
 use error::Result;
+#[cfg(target_os = "linux")]
 use std::{fs::File};
+#[cfg(target_os = "windows")]
+use bindings::*;
 
 pub trait MemoryAccessor {
     fn read_buffer(&self, buf: &mut [u8], addr: usize);
@@ -255,12 +258,12 @@ pub fn get_process_info_list<S: AsRef<str>>(name: S) -> Result<Vec<ProcessInfo>>
     let mut proc_entry = PROCESSENTRY32W::default();
     let h_snap  = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
     if h_snap <= 0 as _ {
-        return Err(Error::os("CreateToolhelp32Snapshot"))
+        return Err(crate::error::Error::os("CreateToolhelp32Snapshot"))
     }
     let _guard = HandleGuard(h_snap);
     proc_entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
     if (unsafe { Process32FirstW(h_snap, &mut proc_entry) } == 0) {
-        return Err(Error::os("Process32FirstW"));
+        return Err(crate::error::Error::os("Process32FirstW"));
     }
     loop {
         let proc_name = String::from_utf16_lossy(&proc_entry.szExeFile).trim_end_matches('\0').to_owned();

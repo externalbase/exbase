@@ -165,6 +165,7 @@ pub unsafe extern "C" fn memory_read_string(mem: CMemory, max_len: usize, addr: 
     CString::new(s.chars().filter(|&c| c != '\0').collect::<String>()).unwrap().into_raw()
 }
 
+#[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn memory_write_buffer_vfile(mem: CMemory, buf: *const u8, size: usize, addr: usize) {
     throw_if_null(mem);
@@ -172,6 +173,7 @@ pub unsafe extern "C" fn memory_write_buffer_vfile(mem: CMemory, buf: *const u8,
     mem.write_buffer(unsafe { std::slice::from_raw_parts(buf, size) }, addr);
 }
 
+#[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn memory_read_buffer_vfile(mem: CMemory, buf: *mut u8, size: usize, addr: usize) {
     throw_if_null(mem);
@@ -179,6 +181,7 @@ pub unsafe extern "C" fn memory_read_buffer_vfile(mem: CMemory, buf: *mut u8, si
     mem.read_buffer(unsafe { std::slice::from_raw_parts_mut(buf, size) }, addr);
 }
 
+#[cfg(target_os = "linux")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn memory_read_string_vfile(mem: CMemory, max_len: usize, addr: usize) -> *const c_char {
     throw_if_null(mem);
