@@ -22,8 +22,8 @@ my_crate = { git = "https://github.com/Loara228/exbase.git" }
 
 ```
 git clone https://github.com/Loara228/exbase.git
-cd build
-make rust
+cd exbase/src
+cargo rustc --features=ffi --release --crate-type cdylib
 ```
 
 ## Examples
@@ -52,8 +52,6 @@ In the infinite loop (waiting for Enter at each iteration), the program prints a
 cd build
 ./runtarget
 ```
-
-![IMG](./content/before.png)
 
 ### Rust
 
@@ -154,6 +152,11 @@ let my_struct = mem.read::<MyStruct>(addr);
 mem.write(addr, my_struct);
 ```
 
-### Other languages:
+### Other languages
 
 - **[C](./content/clang.md)**
+
+### Pictures
+
+![IMG](./content/win.png)
+![IMG](./content/before.png)
