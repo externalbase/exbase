@@ -23,7 +23,7 @@ void read_write_struct(Memory mem, uintptr_t my_struct_ptr);
 uintptr_t SCAN_RANGE_START = 0;
 uintptr_t SCAN_RANGE_SIZE = 0;
 
-const char PROCESS_NAME =
+const char* PROCESS_NAME =
 #if defined(_WIN32) || defined(_WIN64)
 "ABC123.exe";
 #else
