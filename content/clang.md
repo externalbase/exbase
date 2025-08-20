@@ -69,7 +69,10 @@ Once we’ve found the pattern and calculated its offset from the base module, w
 unsigned char* buf = malloc(mod_size);
 memory_read_buffer(mem, buf, mod_size, mod_address);
 
-uintptr_t pattern_offset = *pat_offsets;
+int out_results_len = 0;
+uintptr_t* pattern_offsets = pattern_scan(pat, buf, SCAN_RANGE_SIZE, 0, &out_results_len);
+
+uintptr_t pattern_offset = *pattern_offsets;
 uintptr_t my_struct_ptr = relative_address(mem, SCAN_RANGE_START + pattern_offset, 3, 7);
 ```
 
