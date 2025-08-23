@@ -83,8 +83,8 @@ pub struct ModuleInfo {
 }
 
 pub struct Pattern {
-    pub bytes: Vec<u8>,
-    pub mask: Vec<u8>,
+    bytes: Vec<u8>,
+    mask: Vec<u8>,
 }
 
 

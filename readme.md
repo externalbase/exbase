@@ -15,7 +15,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ```toml
 [dependencies]
-my_crate = { git = "https://github.com/Loara228/exbase.git" }
+exbase = { git = "https://github.com/Loara228/exbase.git" }
 ```
 
 ### Building the Dynamic Library
