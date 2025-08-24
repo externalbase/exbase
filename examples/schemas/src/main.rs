@@ -7,6 +7,8 @@ use exbase::*;
 use crate::{raw_schema::*, writers::{Context, ModuleWriter, RsModuleWriter}};
 
 const OUTPUT_DIR: &str = "./output";
+const GREEN: &str = "\x1b[32m";
+const RESET: &str = "\x1b[0m";
 
 fn main() -> Result<(), Error> {
     if !std::fs::exists(OUTPUT_DIR)? {
@@ -30,8 +32,16 @@ fn main() -> Result<(), Error> {
     let modules = schema.read_scopes();
 
     for module in modules {
-        let mut file = File::create(format!("{}/{}.rs", OUTPUT_DIR, module.module_name))?;
-        RsModuleWriter::write_module(&mut Context::new(&mem, &module, &mut file))?
+        let len = module.classes.len();
+        let file_name = &format!("{}/{}.rs", OUTPUT_DIR, module.name());
+        if len > 0 {
+            let mut file = File::create(file_name)?;
+            RsModuleWriter::write_module(&mut Context::new(&mem, &module, &mut file))?;
+            println!("{GREEN}{file_name}{RESET}");
+        }
+        else {
+            println!("{file_name}");
+        }
     }
 
     Ok(())
@@ -44,12 +54,17 @@ pub struct Schema<'a, M> where M: MemoryAccessor {
 }
 
 pub struct TypeScope {
-    pub module_name: String,
+    module_name: String,
     pub classes: Vec<Class>
 }
 
 pub struct Class {
     raw: SchemaClassInfoData
+}
+
+#[derive(Debug)]
+pub struct Enum {
+    raw: SchemaEnumInfoData
 }
 
 pub struct Field {
@@ -99,10 +114,15 @@ impl<'a, M: MemoryAccessor> Schema<'a, M> {
 impl TypeScope {
     fn new(mem: &impl MemoryAccessor, address: usize) -> Self {
         let module_name = mem.read_string(address as usize + 0x08, 256);
+
         let mut classes: Vec<Class> = Vec::new();
-        let buckets_offset = address + 0x560 + 0x90;
+        let mut enums: Vec<Enum> = Vec::new();
+
+        let class_bindings = address + 0x560 + 0x90;
+        let enum_bindings = address + 0x3600 + 0x90;
+
         for i in 0..256 {
-            let mut node_ptr: usize = mem.read(buckets_offset as usize + (i * 0x30) + 0x28);
+            let mut node_ptr: usize = mem.read(class_bindings as usize + (i * 0x30) + 0x28);
 
             while node_ptr != 0 {
                 let class_ptr: usize = mem.read(node_ptr as usize + 0x10);
@@ -113,11 +133,34 @@ impl TypeScope {
                 node_ptr = mem.read(node_ptr as usize + 0x08);
             }
         }
+
+        for i in 0..256 {
+            let mut node_ptr: usize = mem.read(enum_bindings as usize + (i * 0x30) + 0x28);
+
+            while node_ptr != 0 {
+                let enum_ptr: usize = mem.read(node_ptr as usize + 0x10);
+                if enum_ptr != 0 {
+                    let r#enum = Enum::new(mem, enum_ptr as usize);
+                    enums.push(r#enum);
+                }
+                node_ptr = mem.read(node_ptr as usize + 0x08);
+            }
+        }
+
+        // for enm in enums {
+        //     println!("{}", enm.read_name(mem));
+        // }
+        
         Self {
             module_name,
-            classes
+            classes,
+            // enums
         }
     } 
+
+    fn name(&self) -> String {
+        self.module_name.trim_start_matches("lib").trim_end_matches(".so").to_owned()
+    }
 }
 
 impl Class {
@@ -128,13 +171,58 @@ impl Class {
         }
     }
 
-    pub fn read_parent(&self, mem: &impl MemoryAccessor) -> String {
+    pub fn read_parent(&self, mem: &impl MemoryAccessor) -> Option<String> {
         let base_class = mem.read::<SchemaBaseClassInfoData>(self.raw.base_classes);
         let parent_class = mem.read::<SchemaBaseClass>(base_class.prev);
-        mem.read_string(parent_class.name, 256)
+        let r = mem.read_string(parent_class.name, 256);
+        match r.is_empty() {
+            true => None,
+            false => Some(r)
+        }
     }
 
     pub fn read_name(&self, mem: &impl MemoryAccessor) -> String {
         mem.read_string(self.raw.name, 256).replace(":", "_")
+    }
+
+    pub fn read_fields(&self, mem: &impl MemoryAccessor) -> Vec<Field> {
+        if self.raw.field_count == 0 { return Vec::default(); }
+
+        let mut result: Vec<Field> = Vec::new();
+        for i in 0..self.raw.field_count {
+            let field = mem.read::<SchemaClassFieldData>(self.raw.fields + (size_of::<SchemaClassFieldData>() * i as usize));
+            result.push(Field { raw: field });
+        }
+        
+        result
+    }
+}
+
+impl Enum {
+    pub fn new(mem: &impl MemoryAccessor, ptr: usize) -> Self {
+        let raw = mem.read::<SchemaEnumInfoData>(ptr);
+        Self {
+            raw
+        }
+    }
+
+    pub fn read_name(&self, mem: &impl MemoryAccessor) -> String {
+        mem.read_string(self.raw.name, 256).replace(":", "_")
+    }
+}
+
+impl Field {
+    pub fn read_name(&self, mem: &impl MemoryAccessor) -> String {
+        mem.read_string(self.raw.name, 256)
+    }
+
+    pub fn read_type_name(&self, mem: &impl MemoryAccessor) -> String {
+        let r#type = mem.read::<SchemaType>(self.raw.r#type);
+        let type_name = mem.read_string(r#type.name, 128).replace(" ", "");
+        type_name
+    }
+
+    pub fn get_offset(&self) -> i32 {
+        self.raw.offset
     }
 }
