@@ -23,9 +23,3 @@ read_only = []
 name = "main"
 path = "../examples/rust/main.rs"
 required-features = []
-
-
-[[example]]
-name = "patterns"
-path = "../examples/rust/patterns.rs"
-required-features = []
