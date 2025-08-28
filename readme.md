@@ -15,13 +15,13 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ```toml
 [dependencies]
-exbase = { git = "https://github.com/Loara228/exbase.git" }
+exbase = { git = "https://github.com/externalbase/exbase.git" }
 ```
 
 ### Building the Dynamic Library
 
 ```
-git clone https://github.com/Loara228/exbase.git
+git clone https://github.com/externalbase/exbase.git
 cd exbase/src
 cargo rustc --features=ffi --release --crate-type cdylib
 ```
@@ -31,7 +31,6 @@ cargo rustc --features=ffi --release --crate-type cdylib
 The demonstration program "[ABC123](./examples/c/target.c)" declares and initializes the pointer `my_struct_ptr`, which external processes can target to read and write the structure’s fields in memory.
 
 ```c
-
 typedef struct {
     int             num;
     char*           long_text;
