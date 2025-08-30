@@ -1,15 +1,21 @@
 use std::{ffi::c_void, fs::OpenOptions, os::unix::fs::FileExt};
 
+use log::warn;
+
 use crate::{bindings::{self, *}, error::Result, MemoryAccessor, StreamMem, SysMem, error::Error};
 
 impl MemoryAccessor for StreamMem {
     fn read_buffer(&self, buf: &mut [u8], addr: usize) {
-        self.mem.read_exact_at(buf, addr as u64).unwrap_or_default();
+        if let Err(e) = self.mem.read_exact_at(buf, addr as u64) {
+            warn!("libc read: {}", e)
+        }
     }
     
     #[cfg(not(feature = "read_only"))]
     fn write_buffer(&self, buf: &[u8], addr: usize) {
-        _ = self.mem.write_at(buf, addr as u64);
+        if let Err(e) = self.mem.write_at(buf, addr as u64) {
+            warn!("libc write: {}", e)
+        }
     }
 }
 
@@ -25,7 +31,7 @@ impl MemoryAccessor for SysMem {
         };
         if process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0) < 0 {
             let err = std::io::Error::last_os_error();
-            eprintln!("process_vm_readv: {}", err);
+            warn!("process_vm_readv: {}", err);
         }
     }
 
@@ -41,8 +47,9 @@ impl MemoryAccessor for SysMem {
         };
 
         if process_vm_writev(self.pid, &local_iov, 1, &remote_iov, 1, 0) < 0 {
+
             let err = std::io::Error::last_os_error();
-            println!("process_vm_writev: {}", err);
+            warn!("process_vm_writev: {}", err);
         }
     }
 }

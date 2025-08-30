@@ -1,5 +1,6 @@
 use std::ffi::c_void;
 use crate::{bindings::*, error::Error, error::Result, MemoryAccessor, SysMem};
+use log::warn;
 
 impl MemoryAccessor for SysMem {
     fn read_buffer(&self, buf: &mut [u8], addr: usize) {
@@ -14,7 +15,7 @@ impl MemoryAccessor for SysMem {
         };
         if suc == 0 {
             let err = std::io::Error::last_os_error();
-            eprintln!("process_vm_readv: {}", err);
+            warn!("ReadProcessMemory: {}", err);
         }
     }
 
@@ -31,7 +32,7 @@ impl MemoryAccessor for SysMem {
         };
         if suc == 0 {
             let err = std::io::Error::last_os_error();
-            eprintln!("process_vm_readv: {}", err);
+            warn!("WriteProcessMemory: {}", err);
         }
     }
 }
